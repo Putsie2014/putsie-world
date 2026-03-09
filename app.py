@@ -2,133 +2,117 @@ import streamlit as st
 import random
 import os
 
-# --- 1. CONFIGURATIE & STYLING ---
-st.set_page_config(page_title="Putsie World", page_icon="🌍", layout="centered")
+# --- 1. PAGINA INSTELLINGEN ---
+st.set_page_config(page_title="Putsie World Online", page_icon="🌍")
 
-# CSS voor de "Putsie Balk"
-st.markdown("""
-    <style>
-    .putsie-balk {
-        background-color: #ffeb3b;
-        padding: 10px;
-        border-radius: 10px;
-        border: 2px solid #fbc02d;
-        color: black;
-        font-weight: bold;
-        margin-bottom: 20px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 2. LOGIN LOGICA (Sidebar) ---
-st.sidebar.title("🌍 Putsie World Login")
-username = st.sidebar.text_input("Gebruikersnaam", value="gast").strip().lower()
+# --- 2. INLOG SYSTEEM (Zijbalk) ---
+st.sidebar.title("🔐 Inloggen")
+username = st.sidebar.text_input("Vul je naam in:", key="user_login").strip().lower()
 
 if not username:
-    st.warning("Vul een naam in de zijbalk in om te beginnen!")
-    st.stop()
+    st.title("🌍 Welkom bij Putsie World")
+    st.info("Vul je naam in de zijbalk in om je koninkrijk te laden of een nieuwe te starten!")
+    st.stop() # Stop hier zodat de rest van de app niet laadt zonder naam
 
-# Bestandsnamen per gebruiker
-user_words_file = f"woorden_{username}.txt"
+# Bestandsnamen koppelen aan de unieke gebruiker
 user_stats_file = f"stats_{username}.txt"
+user_words_file = f"woorden_{username}.txt"
 
-# --- 3. DATA LADEN & INITIALISEREN ---
-def laad_data():
-    # Stats laden
+# --- 3. DATA LADEN FUNCTIES ---
+def laad_gebruiker_data():
+    # Als de gebruiker nieuw is, maak basisbestanden aan
     if not os.path.exists(user_stats_file):
-        with open(user_stats_file, "w") as f: f.write("0;0")
+        with open(user_stats_file, "w") as f:
+            f.write("0;0") # Start met 0 geld en 0 land
     
+    # Laad geld en land in de sessie (tijdelijk geheugen van de browser)
     with open(user_stats_file, "r") as f:
-        content = f.read().split(";")
-        if 'geld' not in st.session_state:
-            st.session_state.geld = int(content[0])
-            st.session_state.land = int(content[1])
+        data = f.read().split(";")
+        st.session_state.geld = int(data[0])
+        st.session_state.land = int(data[1])
 
-    # Woorden laden
+def sla_data_op():
+    with open(user_stats_file, "w") as f:
+        f.write(f"{st.session_state.geld};{st.session_state.land}")
+
+# Initialiseer de data voor de ingelogde gebruiker
+if 'huidige_gebruiker' not in st.session_state or st.session_state.huidige_gebruiker != username:
+    laad_gebruiker_data()
+    st.session_state.huidige_gebruiker = username
+
+# --- 4. DE APP INTERFACE ---
+st.title(f"🌍 Koninkrijk van {username.capitalize()}")
+
+# Dashboard met statistieken
+col1, col2 = st.columns(2)
+col1.metric("💰 Saldo", f"€{st.session_state.geld}")
+col2.metric("🏰 Landgrootte", f"{st.session_state.land} km²")
+
+st.divider()
+
+# Menu met Tabs
+tab1, tab2, tab3 = st.tabs(["🎯 Quiz", "📝 Woorden Toevoegen", "🛒 Winkel"])
+
+# --- TAB 1: DE QUIZ ---
+with tab1:
     woorden = {}
     if os.path.exists(user_words_file):
         with open(user_words_file, "r", encoding="utf-8") as f:
             for line in f:
-                d = line.strip().split(";")
-                if len(d) == 2:
-                    woorden[d[0]] = d[1]
-    return woorden
+                parts = line.strip().split(";")
+                if len(parts) == 2:
+                    woorden[parts[0]] = parts[1]
 
-def save_stats():
-    with open(user_stats_file, "w") as f:
-        f.write(f"{st.session_state.geld};{st.session_state.land}")
-
-woorden_lijst = laad_data()
-
-# --- 4. DE PUTSIE BALK ---
-st.markdown(f'<div class="putsie-balk">Putsie: Welkom {username.capitalize()}! Hoe gaat het met je koninkrijk?</div>', unsafe_allow_html=True)
-
-# --- 5. HET DASHBOARD ---
-col1, col2 = st.columns(2)
-col1.metric("💰 Saldo", f"€{st.session_state.geld}")
-col2.metric("🏰 Land", f"{st.session_state.land} km²")
-
-st.divider()
-
-# --- 6. MENU ---
-menu = st.tabs(["🎮 Quiz", "➕ Toevoegen", "🏰 Winkel", "📖 Studie"])
-
-# TAB 1: QUIZ
-with menu[0]:
-    if not woorden_lijst:
-        st.info("Je hebt nog geen woorden! Ga naar het tabblad 'Toevoegen'.")
+    if not woorden:
+        st.warning("Je hebt nog geen woorden in je lijst! Ga naar 'Woorden Toevoegen'.")
     else:
-        if 'huidig_woord' not in st.session_state:
-            st.session_state.huidig_woord = random.choice(list(woorden_lijst.keys()))
+        if 'vraag_woord' not in st.session_state:
+            st.session_state.vraag_woord = random.choice(list(woorden.keys()))
         
-        woord = st.session_state.huidig_woord
-        st.write(f"### Vertaal: **{woorden_lijst[woord]}**")
-        antwoord = st.text_input("Typ de Franse vertaling:", key="quiz_input")
-
-        if st.button("Check!"):
-            if antwoord.lower().strip() == woord.lower():
-                st.success("Helemaal goed! +€100")
+        vraag = st.session_state.vraag_woord
+        st.write(f"### Vertaal naar het Frans: **{woorden[vraag]}**")
+        
+        poging = st.text_input("Jouw antwoord:", key="quiz_input")
+        
+        if st.button("Controleren"):
+            if poging.lower().strip() == vraag.lower():
+                st.success("🎉 Goed gedaan! Je verdient €100.")
                 st.session_state.geld += 100
-                save_stats()
-                # Kies nieuw woord voor volgende ronde
-                st.session_state.huidig_woord = random.choice(list(woorden_lijst.keys()))
+                sla_data_op()
+                del st.session_state.vraag_woord # Verwijder woord zodat er een nieuwe komt
                 st.rerun()
             else:
-                st.error(f"Helaas! Het juiste woord was: {woord}")
+                st.error(f"Helaas! Het juiste antwoord was: {vraag}")
 
-# TAB 2: TOEVOEGEN
-with menu[1]:
-    st.subheader("Nieuwe woorden leren")
-    f_woord = st.text_input("Frans Woord (bijv. 'La pomme')")
-    n_woord = st.text_input("Nederlandse Betekenis (bijv. 'De appel')")
+# --- TAB 2: WOORDEN TOEVOEGEN ---
+with tab2:
+    st.subheader("Voeg nieuwe woorden toe aan je account")
+    nieuw_frans = st.text_input("Frans woord:")
+    nieuw_nl = st.text_input("Nederlandse vertaling:")
     
-    if st.button("Opslaan in mijn lijst"):
-        if f_woord and n_woord:
+    if st.button("Opslaan"):
+        if nieuw_frans and nieuw_nl:
             with open(user_words_file, "a", encoding="utf-8") as f:
-                f.write(f"{f_woord.lower().strip()};{n_woord.lower().strip()}\n")
-            st.success("Opgeslagen! Je kunt dit woord nu tegenkomen in de quiz.")
+                f.write(f"{nieuw_frans.lower().strip()};{nieuw_nl.lower().strip()}\n")
+            st.success(f"'{nieuw_frans}' is toegevoegd aan jouw lijst!")
             st.rerun()
 
-# TAB 3: WINKEL
-with menu[2]:
-    st.subheader("Breid je koninkrijk uit")
-    st.write("Elke 10 km² kost €500.")
-    if st.button("Koop land (+10 km²)"):
+# --- TAB 3: DE WINKEL ---
+with tab3:
+    st.subheader("Breid je land uit")
+    st.write("Kosten: €500 voor 10 km² extra.")
+    if st.button("Koop 10 km² Land"):
         if st.session_state.geld >= 500:
             st.session_state.geld -= 500
             st.session_state.land += 10
-            save_stats()
+            sla_data_op()
             st.balloons()
-            st.success("Gefeliciteerd! Je land is nu groter.")
+            st.success("Je land is gegroeid!")
             st.rerun()
         else:
-            st.error("Je hebt niet genoeg geld. Doe meer quizes!")
+            st.error("Je hebt niet genoeg geld! Doe meer quizzen.")
 
-# TAB 4: STUDIE
-with menu[3]:
-    st.subheader("Je Woordenlijst")
-    if woorden_lijst:
-        for f, n in woorden_lijst.items():
-            st.write(f"🇫🇷 {f} = 🇳🇱 {n}")
-    else:
-        st.write("Lijst is nog leeg.")
+# Uitlog knop onderaan de zijbalk
+if st.sidebar.button("Uitloggen"):
+    st.session_state.clear()
+    st.rerun()
