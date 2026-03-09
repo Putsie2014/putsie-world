@@ -31,39 +31,38 @@ if not st.session_state.ingelogd:
     st.markdown("<h1 style='text-align: center;'>🌍 Putsie World</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center;'>Klaar om te leren?</h3>", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 4, 1]) # Iets breder voor mobiel
     with col2:
-        st.write("### Log in of Registreer")
-        u = st.text_input("Gebruikersnaam").lower().strip()
-        p = st.text_input("Wachtwoord", type="password")
-        
-        if st.button("Start Avontuur", use_container_width=True):
-            db = laad_db()
+        # Gebruik een formulier zodat mobiel niet tussentijds ververst
+        with st.form("login_form"):
+            st.write("### Log in of Registreer")
+            u = st.text_input("Gebruikersnaam").lower().strip()
+            p = st.text_input("Wachtwoord", type="password")
+            submit_button = st.form_submit_button("Start Avontuur", use_container_width=True)
             
-            if u in db["users"]:
-                # Bestaande gebruiker: check wachtwoord
-                if db["users"][u]["password"] == p:
-                    st.session_state.ingelogd = True
-                    st.session_state.username = u
-                    st.rerun()
+            if submit_button:
+                db = laad_db()
+                if u in db["users"]:
+                    if db["users"][u]["password"] == p:
+                        st.session_state.ingelogd = True
+                        st.session_state.username = u
+                        st.rerun()
+                    else:
+                        st.error("Wachtwoord onjuist!")
                 else:
-                    st.error("Wachtwoord onjuist!")
-            else:
-                # Nieuwe gebruiker: aanmaken
-                if u and p:
-                    db["users"][u] = {
-                        "password": p,
-                        "geld": 0,
-                        "land": 0,
-                        "woorden": {}
-                    }
-                    sla_db_op(db)
-                    st.session_state.ingelogd = True
-                    st.session_state.username = u
-                    st.success("Account aangemaakt!")
-                    st.rerun()
-                else:
-                    st.warning("Vul een naam en wachtwoord in.")
+                    if u and p:
+                        db["users"][u] = {
+                            "password": p,
+                            "geld": 0,
+                            "land": 0,
+                            "woorden": {}
+                        }
+                        sla_db_op(db)
+                        st.session_state.ingelogd = True
+                        st.session_state.username = u
+                        st.rerun()
+                    else:
+                        st.warning("Vul een naam en wachtwoord in.")
     st.stop()
 
 # --- 5. DE APP (NA INLOGGEN) ---
