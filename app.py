@@ -1,118 +1,133 @@
 import streamlit as st
 import random
+import json
 import os
 
-# --- 1. PAGINA INSTELLINGEN ---
+# --- 1. CONFIGURATIE ---
+DB_FILE = "database.json"
+
 st.set_page_config(page_title="Putsie World Online", page_icon="🌍")
 
-# --- 2. INLOG SYSTEEM (Zijbalk) ---
-st.sidebar.title("🔐 Inloggen")
-username = st.sidebar.text_input("Vul je naam in:", key="user_login").strip().lower()
+# --- 2. DATABASE FUNCTIES ---
+def laad_db():
+    if not os.path.exists(DB_FILE):
+        # Als er nog geen database is, maken we een lege
+        return {"users": {}}
+    with open(DB_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-if not username:
-    st.title("🌍 Welkom bij Putsie World")
-    st.info("Vul je naam in de zijbalk in om je koninkrijk te laden of een nieuwe te starten!")
-    st.stop() # Stop hier zodat de rest van de app niet laadt zonder naam
+def sla_db_op(db):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(db, f, indent=4)
 
-# Bestandsnamen koppelen aan de unieke gebruiker
-user_stats_file = f"stats_{username}.txt"
-user_words_file = f"woorden_{username}.txt"
+# --- 3. SESSIE INITIALISATIE ---
+if 'ingelogd' not in st.session_state:
+    st.session_state.ingelogd = False
+if 'user_data' not in st.session_state:
+    st.session_state.user_data = None
 
-# --- 3. DATA LADEN FUNCTIES ---
-def laad_gebruiker_data():
-    # Als de gebruiker nieuw is, maak basisbestanden aan
-    if not os.path.exists(user_stats_file):
-        with open(user_stats_file, "w") as f:
-            f.write("0;0") # Start met 0 geld en 0 land
+# --- 4. HOOFDMENU (LOGIN) ---
+if not st.session_state.ingelogd:
+    st.markdown("<h1 style='text-align: center;'>🌍 Putsie World</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>Klaar om te leren?</h3>", unsafe_allow_html=True)
     
-    # Laad geld en land in de sessie (tijdelijk geheugen van de browser)
-    with open(user_stats_file, "r") as f:
-        data = f.read().split(";")
-        st.session_state.geld = int(data[0])
-        st.session_state.land = int(data[1])
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.write("### Log in of Registreer")
+        u = st.text_input("Gebruikersnaam").lower().strip()
+        p = st.text_input("Wachtwoord", type="password")
+        
+        if st.button("Start Avontuur", use_container_width=True):
+            db = laad_db()
+            
+            if u in db["users"]:
+                # Bestaande gebruiker: check wachtwoord
+                if db["users"][u]["password"] == p:
+                    st.session_state.ingelogd = True
+                    st.session_state.username = u
+                    st.rerun()
+                else:
+                    st.error("Wachtwoord onjuist!")
+            else:
+                # Nieuwe gebruiker: aanmaken
+                if u and p:
+                    db["users"][u] = {
+                        "password": p,
+                        "geld": 0,
+                        "land": 0,
+                        "woorden": {}
+                    }
+                    sla_db_op(db)
+                    st.session_state.ingelogd = True
+                    st.session_state.username = u
+                    st.success("Account aangemaakt!")
+                    st.rerun()
+                else:
+                    st.warning("Vul een naam en wachtwoord in.")
+    st.stop()
 
-def sla_data_op():
-    with open(user_stats_file, "w") as f:
-        f.write(f"{st.session_state.geld};{st.session_state.land}")
+# --- 5. DE APP (NA INLOGGEN) ---
+db = laad_db()
+user = st.session_state.username
+u_data = db["users"][user]
 
-# Initialiseer de data voor de ingelogde gebruiker
-if 'huidige_gebruiker' not in st.session_state or st.session_state.huidige_gebruiker != username:
-    laad_gebruiker_data()
-    st.session_state.huidige_gebruiker = username
+# Sidebar voor stats en uitloggen
+st.sidebar.title(f"👤 {user.capitalize()}")
+st.sidebar.metric("💰 Saldo", f"€{u_data['geld']}")
+st.sidebar.metric("🏰 Land", f"{u_data['land']} km²")
 
-# --- 4. DE APP INTERFACE ---
-st.title(f"🌍 Koninkrijk van {username.capitalize()}")
+if st.sidebar.button("Uitloggen"):
+    st.session_state.ingelogd = False
+    st.rerun()
 
-# Dashboard met statistieken
-col1, col2 = st.columns(2)
-col1.metric("💰 Saldo", f"€{st.session_state.geld}")
-col2.metric("🏰 Landgrootte", f"{st.session_state.land} km²")
+st.title(f"Koninkrijk van {user.capitalize()}")
 
-st.divider()
+# Tabs
+tab1, tab2, tab3 = st.tabs(["🎯 Quiz", "📝 Toevoegen", "🛒 Winkel"])
 
-# Menu met Tabs
-tab1, tab2, tab3 = st.tabs(["🎯 Quiz", "📝 Woorden Toevoegen", "🛒 Winkel"])
-
-# --- TAB 1: DE QUIZ ---
+# --- TAB 1: QUIZ ---
 with tab1:
-    woorden = {}
-    if os.path.exists(user_words_file):
-        with open(user_words_file, "r", encoding="utf-8") as f:
-            for line in f:
-                parts = line.strip().split(";")
-                if len(parts) == 2:
-                    woorden[parts[0]] = parts[1]
-
-    if not woorden:
-        st.warning("Je hebt nog geen woorden in je lijst! Ga naar 'Woorden Toevoegen'.")
+    if not u_data["woorden"]:
+        st.info("Voeg eerst woorden toe in het volgende tabblad!")
     else:
-        if 'vraag_woord' not in st.session_state:
-            st.session_state.vraag_woord = random.choice(list(woorden.keys()))
+        if 'vraag' not in st.session_state:
+            st.session_state.vraag = random.choice(list(u_data["woorden"].keys()))
         
-        vraag = st.session_state.vraag_woord
-        st.write(f"### Vertaal naar het Frans: **{woorden[vraag]}**")
+        v = st.session_state.vraag
+        st.write(f"### Vertaal naar het Frans: **{u_data['woorden'][v]}**")
+        poging = st.text_input("Antwoord:", key="quiz_in")
         
-        poging = st.text_input("Jouw antwoord:", key="quiz_input")
-        
-        if st.button("Controleren"):
-            if poging.lower().strip() == vraag.lower():
-                st.success("🎉 Goed gedaan! Je verdient €100.")
-                st.session_state.geld += 100
-                sla_data_op()
-                del st.session_state.vraag_woord # Verwijder woord zodat er een nieuwe komt
+        if st.button("Check"):
+            if poging.lower().strip() == v.lower():
+                st.balloons()
+                u_data["geld"] += 100
+                sla_db_op(db)
+                st.success("Goed! +€100")
+                del st.session_state.vraag
                 st.rerun()
             else:
-                st.error(f"Helaas! Het juiste antwoord was: {vraag}")
+                st.error(f"Fout! Het was: {v}")
 
-# --- TAB 2: WOORDEN TOEVOEGEN ---
+# --- TAB 2: TOEVOEGEN ---
 with tab2:
-    st.subheader("Voeg nieuwe woorden toe aan je account")
-    nieuw_frans = st.text_input("Frans woord:")
-    nieuw_nl = st.text_input("Nederlandse vertaling:")
-    
+    st.subheader("Nieuwe woorden")
+    f_w = st.text_input("Frans:")
+    n_w = st.text_input("Nederlands:")
     if st.button("Opslaan"):
-        if nieuw_frans and nieuw_nl:
-            with open(user_words_file, "a", encoding="utf-8") as f:
-                f.write(f"{nieuw_frans.lower().strip()};{nieuw_nl.lower().strip()}\n")
-            st.success(f"'{nieuw_frans}' is toegevoegd aan jouw lijst!")
+        if f_w and n_w:
+            u_data["woorden"][f_w.strip().lower()] = n_w.strip().lower()
+            sla_db_op(db)
+            st.success("Toegevoegd aan je persoonlijke database!")
             st.rerun()
 
-# --- TAB 3: DE WINKEL ---
+# --- TAB 3: WINKEL ---
 with tab3:
-    st.subheader("Breid je land uit")
-    st.write("Kosten: €500 voor 10 km² extra.")
-    if st.button("Koop 10 km² Land"):
-        if st.session_state.geld >= 500:
-            st.session_state.geld -= 500
-            st.session_state.land += 10
-            sla_data_op()
-            st.balloons()
-            st.success("Je land is gegroeid!")
+    st.subheader("Winkel")
+    if st.button("Koop 10km² Land (€500)"):
+        if u_data["geld"] >= 500:
+            u_data["geld"] -= 500
+            u_data["land"] += 10
+            sla_db_op(db)
             st.rerun()
         else:
-            st.error("Je hebt niet genoeg geld! Doe meer quizzen.")
-
-# Uitlog knop onderaan de zijbalk
-if st.sidebar.button("Uitloggen"):
-    st.session_state.clear()
-    st.rerun()
+            st.error("Niet genoeg geld!")
