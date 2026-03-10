@@ -60,11 +60,16 @@ elif st.session_state.page == "Klas":
     db = laad_db()
     
 # --- 4. PAGINA LOGICA ---
+# Zorg dat deze 'if' op het zelfde niveau staat als de rest van je pagina-checks
+if st.session_state.page == "Frans":
+    st.title("🎓 Putsie Education: Frans")
+    # ... (jouw Franse quiz code) ...
+
 elif st.session_state.page == "Klas":
     st.title("🏫 Putsie Klaslokaal")
     db = laad_db()
     
-    # LEERKRACHT (Elliot / Annelies)
+    # LEERKRACHT
     if user.lower() in LEERKRACHTEN:
         st.subheader("Beheer je klassen")
         naam = st.text_input("Naam voor de nieuwe klas:")
@@ -104,8 +109,3 @@ elif st.session_state.page == "Klas":
                     data["geld"] += taak["beloning"]
                     db["users"][user] = data
                     sla_db_op(db); st.rerun()
-else:
-    st.title("🏠 Welkom bij Putsie Studios!")
-            col1, col2 = st.columns(2)
-            with col1: st.json(gebruiker_data["woorden"]["woorden"])
-            with col2: st.json(gebruiker_data["woorden"]["werkwoorden"])
