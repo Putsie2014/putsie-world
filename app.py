@@ -4,43 +4,68 @@ import os
 import random
 import string
 
-# --- 1. CONFIGURATIE & HIGH-END STYLING ---
+# --- 1. CONFIGURATIE & ULTRA STYLING ---
 DB_FILE = "database.json"
 LEERKRACHTEN = ["elliot", "annelies", "admin"]
-st.set_page_config(page_title="Putsie Studios", page_icon="🎮", layout="wide")
+st.set_page_config(page_title="Putsie Studios", page_icon="🌍", layout="wide")
 
-st.markdown("""
-<style>
-    /* High-end Dark Theme Gradient */
-    .stApp { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); color: white; }
-    
-    /* Glassmorphism containers */
-    [data-testid="stVerticalBlockBorderWrapper"] { 
-        background: rgba(255,255,255,0.07) !important; 
-        backdrop-filter: blur(15px) !important; 
-        border-radius: 25px !important; 
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        padding: 25px !important;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5) !important;
-    }
+def apply_custom_styles():
+    st.markdown("""
+    <style>
+        /* Deep Galaxy Background */
+        .stApp { 
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); 
+            color: white; 
+        }
+        
+        /* Glassmorphism Containers */
+        [data-testid="stVerticalBlockBorderWrapper"] { 
+            background: rgba(255, 255, 255, 0.05) !important; 
+            backdrop-filter: blur(15px) !important; 
+            border-radius: 20px !important; 
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            padding: 25px !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4) !important;
+            transition: 0.3s ease-in-out;
+        }
+        
+        [data-testid="stVerticalBlockBorderWrapper"]:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }
 
-    /* Knoppen met animatie */
-    .stButton > button { 
-        border-radius: 15px !important; 
-        background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%) !important;
-        color: white !important;
-        border: none !important;
-        font-weight: bold !important;
-        transition: 0.3s !important;
-    }
-    .stButton > button:hover { transform: scale(1.05); box-shadow: 0 5px 15px rgba(37, 117, 252, 0.4); }
-    
-    /* Input velden styling */
-    input { border-radius: 10px !important; }
-</style>
-""", unsafe_allow_html=True)
+        /* Neon Buttons */
+        .stButton > button { 
+            border-radius: 12px !important; 
+            background: linear-gradient(45deg, #00dbde 0%, #fc00ff 100%) !important;
+            color: white !important;
+            border: none !important;
+            font-weight: 800 !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.4s !important;
+            padding: 10px 24px !important;
+        }
+        
+        .stButton > button:hover { 
+            box-shadow: 0 0 20px rgba(0, 219, 222, 0.6) !important;
+            transform: scale(1.05) !important;
+        }
 
-# --- 2. DATABASE FUNCTIES ---
+        /* Input fields */
+        input { 
+            background-color: rgba(0,0,0,0.2) !important; 
+            color: white !important; 
+            border-radius: 10px !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+apply_custom_styles()
+
+# --- 2. DATABASE ARCHITECTUUR ---
 def laad_db():
     if not os.path.exists(DB_FILE): return {"users": {}, "klassen": {}}
     try:
@@ -54,154 +79,171 @@ def laad_db():
 def sla_db_op(db):
     with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db, f, indent=4)
 
-# --- 3. LOGIN & REGISTRATIE ---
+# --- 3. TOEGANGSCONTROLE ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 
 if not st.session_state.ingelogd:
-    st.title("🌍 Putsie Studios")
+    st.title("🌌 Putsie Studios: Login")
     db = laad_db()
-    t1, t2 = st.tabs(["🔐 Inloggen", "📝 Account maken"])
+    t1, t2 = st.tabs(["🚀 Inloggen", "📝 Nieuw Account"])
     with t1:
-        u = st.text_input("Naam", key="l_u").lower().strip()
+        u = st.text_input("Gebruikersnaam", key="l_u").lower().strip()
         p = st.text_input("Wachtwoord", type="password", key="l_p")
-        if st.button("Start Adventure", type="primary"):
+        if st.button("Start Adventure"):
             if u in db["users"] and db["users"][u].get("password") == p:
                 st.session_state.ingelogd = True; st.session_state.username = u; st.rerun()
-            else: st.error("Inloggegevens kloppen niet!")
+            else: st.error("Inloggegevens onjuist!")
     with t2:
-        ru = st.text_input("Kies een Naam", key="r_u").lower().strip()
-        rp = st.text_input("Kies een Wachtwoord", type="password", key="r_p")
-        if st.button("Create Account"):
+        ru = st.text_input("Kies Naam", key="r_u").lower().strip()
+        rp = st.text_input("Kies Wachtwoord", type="password", key="r_p")
+        if st.button("Account Aanmaken"):
             if ru and rp and ru not in db["users"]:
                 db["users"][ru] = {"password": rp, "geld": 100, "klas_id": None, "voltooide_taken": [], "woorden": {"woorden": {}, "werkwoorden": {}}}
-                sla_db_op(db); st.success("Account klaar! Log nu in."); st.balloons()
+                sla_db_op(db); st.success("Welkom! Log nu in."); st.balloons()
     st.stop()
 
-# --- 4. DATA SETUP ---
+# --- 4. DATA SYNCHRONISATIE ---
 db = laad_db()
 user = st.session_state.username
 data = db["users"].get(user, {"geld": 0, "woorden": {"woorden": {}, "werkwoorden": {}}})
 
 with st.sidebar:
-    st.title(f"🚀 {user.capitalize()}")
-    st.metric("💰 Jouw Saldo", f"€{data.get('geld', 0)}")
+    st.title(f"👾 {user.capitalize()}")
+    st.metric("SALDO", f"€{data.get('geld', 0)}")
     st.markdown("---")
-    choice = st.radio("Menu", ["🏠 Dashboard", "📚 Woorden & Quiz", "🏫 Mijn Klas", "👾 Arcade"])
-    if st.button("🚪 Uitloggen"): st.session_state.clear(); st.rerun()
+    nav = st.radio("NAVIGATIE", ["🏠 Home", "📚 Frans Lab", "🏫 Het Klaslokaal", "🎮 Game Arcade"])
+    if st.button("🚪 Log uit"): st.session_state.clear(); st.rerun()
 
 # --- 5. PAGINA'S ---
 
-# --- DASHBOARD ---
-if choice == "🏠 Dashboard":
-    st.title(f"Welkom terug, {user.capitalize()}!")
-    col1, col2 = st.columns(2)
-    with col1:
-        with st.container():
-            st.subheader("📊 Je Voortgang")
-            st.write(f"Vermogen: **€{data.get('geld', 0)}**")
-            w_count = len(data.get('woorden', {}).get('woorden', {})) + len(data.get('woorden', {}).get('werkwoorden', {}))
-            st.write(f"Woorden geleerd: **{w_count}**")
-    with col2:
-        with st.container():
-            st.subheader("📣 Nieuws")
-            st.write("Versie 3.0 is live! Nu met betere graphics en games.")
+if nav == "🏠 Home":
+    st.title(f"Welkom in de Studio, {user.capitalize()}!")
+    with st.container():
+        st.markdown("### 📈 Jouw Status")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Geld", f"€{data.get('geld', 0)}")
+        c2.metric("Taken afgerond", len(data.get("voltooide_taken", [])))
+        c3.metric("Rangen", "Goud" if data.get("geld", 0) > 500 else "Zilver")
 
-# --- WOORDEN & QUIZ ---
-elif choice == "📚 Woorden & Quiz":
-    st.title("🎓 Frans Master")
-    t1, t2, t3 = st.tabs(["🎯 Oefen Quiz", "➕ Woord Toevoegen", "📑 Mijn Woorden"])
-    
+elif nav == "📚 Frans Lab":
+    st.title("🧪 Frans Woorden Lab")
+    t1, t2 = st.tabs(["🎯 Quiz Mode", "🧪 Voeg woorden toe"])
     with t1:
         cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
-        woorden_dict = data.get("woorden", {}).get(cat, {})
+        w_dict = data.get("woorden", {}).get(cat, {})
         if st.button("Nieuwe Vraag 🎲"):
-            if woorden_dict: st.session_state.q = random.choice(list(woorden_dict.keys()))
-            else: st.warning("Voeg eerst woorden toe!")
-        if 'q' in st.session_state:
-            st.subheader(f"Vertaal: **{st.session_state.q}**")
+            if w_dict: st.session_state.quiz_q = random.choice(list(w_dict.keys()))
+            else: st.warning("Voeg eerst woorden toe in het andere tabblad!")
+        if 'quiz_q' in st.session_state:
+            st.subheader(f"Vertaal: {st.session_state.quiz_q}")
             ans = st.text_input("Antwoord:")
-            if st.button("Check"):
-                if ans.lower().strip() == woorden_dict[st.session_state.q].lower().strip():
-                    data["geld"] += 10; db["users"][user] = data; sla_db_op(db); st.balloons(); del st.session_state.q; st.rerun()
-                else: st.error("Foutje! Probeer het nog eens.")
+            if st.button("Check ✔️"):
+                if ans.lower().strip() == w_dict[st.session_state.quiz_q].lower().strip():
+                    data["geld"] += 15; db["users"][user] = data; sla_db_op(db)
+                    st.toast("Lekker hoor! +€15"); del st.session_state.quiz_q; st.rerun()
+                else: st.error("Helaas! Probeer het opnieuw.")
     with t2:
-        c = st.radio("Type", ["woorden", "werkwoorden"], horizontal=True)
-        f = st.text_input("Frans"); n = st.text_input("Nederlands")
-        if st.button("Opslaan 💾"):
-            if f and n:
-                if "woorden" not in data: data["woorden"] = {"woorden": {}, "werkwoorden": {}}
-                data["woorden"][c][f] = n; db["users"][user] = data; sla_db_op(db); st.success("Opgeslagen!")
-    with t3:
-        st.subheader("Jouw Woordenlijst")
-        st.json(data.get("woorden", {}))
+        colA, colB = st.columns(2)
+        type_w = colA.radio("Type", ["woorden", "werkwoorden"])
+        f_w = colA.text_input("Frans"); n_w = colB.text_input("Nederlands")
+        if st.button("Opslaan in Lab 💾"):
+            if f_w and n_w:
+                data.setdefault("woorden", {}).setdefault(type_w, {})[f_w] = n_w
+                db["users"][user] = data; sla_db_op(db); st.success("Woord opgeslagen!")
 
-# --- KLAS ---
-elif choice == "🏫 Mijn Klas":
-    st.title("🏫 Klaslokaal")
+elif nav == "🏫 Het Klaslokaal":
+    st.title("🏫 Putsie Klaslokaal")
+    
+    # ADMIN GEDEELTE
     if user.lower() in LEERKRACHTEN:
+        st.markdown("### 🛠️ Leerkracht Dashboard (ADMIN)")
         mijn_klas = next((c for c, i in db["klassen"].items() if i.get("docent") == user), None)
+        
         if not mijn_klas:
-            naam = st.text_input("Naam nieuwe klas:")
-            if st.button("Klas Aanmaken"):
-                code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-                db["klassen"][code] = {"naam": naam, "docent": user, "taken": []}; sla_db_op(db); st.rerun()
+            with st.container():
+                st.write("Je hebt nog geen klas. Laten we er een bouwen!")
+                k_naam = st.text_input("Naam van je klas")
+                if st.button("Bouw Klas ✨"):
+                    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+                    db["klassen"][code] = {"naam": k_naam, "docent": user, "taken": []}
+                    sla_db_op(db); st.rerun()
         else:
-            info = db["klassen"][mijn_klas]
-            st.success(f"Klas: {info.get('naam')} | Code: **{mijn_klas}**")
-            col1, col2 = st.columns(2)
-            with col1:
+            klas_info = db["klassen"][mijn_klas]
+            st.success(f"Actieve Klas: **{klas_info.get('naam')}** | Code: `{mijn_klas}`")
+            
+            c1, c2 = st.columns(2)
+            with c1:
                 with st.container():
-                    st.markdown("### ➕ Nieuwe Taak")
-                    t_q = st.text_input("Vraag"); t_a = st.text_input("Antwoord"); t_b = st.number_input("Geld", value=20)
-                    if st.button("Taak Plaatsen"):
-                        info.setdefault("taken", []).append({"vraag": t_q, "antwoord": t_a, "beloning": t_b})
-                        sla_db_op(db); st.rerun()
-            with col2:
-                st.markdown("### 📋 Actieve Taken")
-                for t in info.get("taken", []):
-                    # HIER IS DE FIX: .get() voorkomt de KeyError
-                    v_tekst = t.get('vraag', 'Oude taak')
-                    b_tekst = t.get('beloning', 0)
-                    st.write(f"📝 {v_tekst} (Bonus: €{b_tekst})")
+                    st.markdown("#### ➕ Nieuwe Taak")
+                    q = st.text_input("Vraag"); a = st.text_input("Antwoord"); g = st.number_input("Beloning", 10, 500, 20)
+                    if st.button("Taak de wereld in sturen 🚀"):
+                        klas_info.setdefault("taken", []).append({"vraag": q, "antwoord": a, "beloning": g})
+                        sla_db_op(db); st.success("Taak geplaatst!"); st.rerun()
+            with c2:
+                with st.container():
+                    st.markdown("#### 📋 Overzicht Taken")
+                    for i, t in enumerate(klas_info.get("taken", [])):
+                        st.write(f"**{i+1}.** {t.get('vraag')} ➔ *{t.get('antwoord')}* (€{t.get('beloning')})")
+                    if st.button("Verwijder alle taken 🗑️"):
+                        klas_info["taken"] = []; sla_db_op(db); st.rerun()
+
+    # LEERLING GEDEELTE
     else:
         if not data.get("klas_id"):
-            code = st.text_input("Voer klascode in:").upper()
-            if st.button("Deelnemen"):
-                if code in db["klassen"]:
-                    data["klas_id"] = code; db["users"][user] = data; sla_db_op(db); st.balloons(); st.rerun()
-                else: st.error("Code niet gevonden.")
+            with st.container():
+                st.write("Je bent nog geen lid van een klas.")
+                c_in = st.text_input("Voer de geheime klascode in:").upper()
+                if st.button("Betreed Klas 🚪"):
+                    if c_in in db["klassen"]:
+                        data["klas_id"] = c_in; db["users"][user] = data; sla_db_op(db)
+                        st.balloons(); st.rerun()
+                    else: st.error("Code niet gevonden!")
         else:
             klas = db["klassen"].get(data["klas_id"], {})
-            st.subheader(f"Klas: {klas.get('naam', 'Onbekend')}")
-            for i, taak in enumerate(klas.get("taken", [])):
-                done = i in data.get("voltooide_taken", [])
-                v = taak.get("vraag", "Vraag mist")
-                b = taak.get("beloning", 0)
-                if st.button(f"{'✅' if done else '▶️'} {v} (€{b})", disabled=done, key=f"t_{i}"):
-                    st.session_state.active_t = {"idx": i, "data": taak}
-            if 'active_t' in st.session_state:
-                at = st.session_state.active_t
-                ans = st.text_input(f"Beantwoord: {at['data'].get('vraag')}")
-                if st.button("Inleveren"):
-                    if ans.lower().strip() == at['data'].get('antwoord', '').lower().strip():
-                        data["geld"] += at['data'].get('beloning', 0); data.setdefault("voltooide_taken", []).append(at['idx'])
-                        db["users"][user] = data; sla_db_op(db); del st.session_state.active_t; st.balloons(); st.rerun()
-                    else: st.error("Helaas, niet juist!")
+            st.subheader(f"🎒 Klas: {klas.get('naam', 'Onbekend')}")
+            
+            taken = klas.get("taken", [])
+            if not taken:
+                st.info("De leerkracht heeft nog geen taken geplaatst. Relax-tijd! 😎")
+            else:
+                for i, t in enumerate(taken):
+                    is_done = i in data.get("voltooide_taken", [])
+                    with st.container():
+                        col1, col2 = st.columns([3, 1])
+                        col1.markdown(f"**{'✅' if is_done else '📝'} {t.get('vraag', 'Geen vraag')}**")
+                        if not is_done:
+                            if col2.button("Start", key=f"t_{i}"):
+                                st.session_state.active_task = {"idx": i, "data": t}
+                        else: col2.write("Voltooid!")
+                
+                if 'active_task' in st.session_state:
+                    st.markdown("---")
+                    at = st.session_state.active_task
+                    st.subheader(f"Beantwoord: {at['data'].get('vraag')}")
+                    leerling_ans = st.text_input("Jouw antwoord op de taak:")
+                    if st.button("Taak Inleveren ✔️"):
+                        if leerling_ans.lower().strip() == at['data'].get('antwoord', '').lower().strip():
+                            data["geld"] += at['data'].get('beloning', 0)
+                            data.setdefault("voltooide_taken", []).append(at['idx'])
+                            db["users"][user] = data; sla_db_op(db)
+                            del st.session_state.active_task
+                            st.balloons(); st.success("Geld verdiend!"); st.rerun()
+                        else: st.error("Dat is niet het juiste antwoord!")
 
-# --- ARCADE ---
-elif choice == "👾 Arcade":
-    st.title("👾 Putsie Arcade")
+elif nav == "🎮 Game Arcade":
+    st.title("👾 Putsie Game Arcade")
+    st.write("Zet je verstand op nul en verdien een beetje extra.")
     c1, c2 = st.columns(2)
     with c1:
         with st.container():
-            st.subheader("Alien Shooter 🛸")
-            if st.button("FIRE! 🔫"):
-                if random.random() > 0.5:
-                    data["geld"] += 2; db["users"][user] = data; sla_db_op(db); st.toast("RAAK! +€2", icon="👾")
-                else: st.toast("MIS!", icon="💨")
+            st.subheader("Alien Clicker 🛸")
+            if st.button("SCHIET! 💥"):
+                if random.random() > 0.4:
+                    data["geld"] += 2; db["users"][user] = data; sla_db_op(db); st.toast("RAAK! +€2")
+                else: st.toast("MIS! 💨")
     with c2:
         with st.container():
-            st.subheader("Bounce Game 🏀")
-            st.markdown('<div style="height:40px; width:40px; background:linear-gradient(to bottom, #ff9900, #ff6600); border-radius:50%; animation: bounce 0.6s infinite alternate; box-shadow: 0 10px 20px rgba(0,0,0,0.5);"></div><style>@keyframes bounce { from {margin-top:0px;} to {margin-top:50px;} }</style>', unsafe_allow_html=True)
-            if st.button("Collect Energy"):
-                data["geld"] += 1; db["users"][user] = data; sla_db_op(db); st.toast("Gevangen! +€1")
+            st.subheader("Neon Bouncer 🏀")
+            st.markdown('<div style="height:40px; width:40px; background:linear-gradient(to bottom, #00dbde, #fc00ff); border-radius:50%; animation: bounce 0.4s infinite alternate; box-shadow: 0 0 15px #00dbde;"></div><style>@keyframes bounce { from {margin-top:0px;} to {margin-top:40px;} }</style>', unsafe_allow_html=True)
+            if st.button("Power-up Pakken"):
+                data["geld"] += 1; db["users"][user] = data; sla_db_op(db); st.toast("Energy +1")
