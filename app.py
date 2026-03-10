@@ -46,14 +46,14 @@ if not st.session_state.ingelogd:
         rp = st.text_input("Kies Wachtwoord", type="password", key="r_p")
         if st.button("Maak Account"):
             if ru and ru not in db["users"]:
-                db["users"][ru] = {"password": rp, "geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None}
+                db["users"][ru] = {"password": rp, "geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None, "voltooide_taken": []}
                 sla_db_op(db); st.success("Account gemaakt!"); st.rerun()
     st.stop()
 
 # --- 3. DATA & ZIJKANT ---
 db = laad_db()
 user = st.session_state.username
-data = db["users"].get(user, {"geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None})
+data = db["users"].get(user, {"geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None, "voltooide_taken": []})
 
 with st.sidebar:
     st.metric("Saldo", f"€{data.get('geld', 0)}")
@@ -65,46 +65,21 @@ with st.sidebar:
 # --- 4. PAGINA LOGICA ---
 page = st.session_state.get("page", "Home")
 
-if page == "Frans":
-    st.title("🎓 Frans & Werkwoorden")
-    t1, t2 = st.tabs(["🎯 Quiz", "➕ Toevoegen"])
-    with t1:
-        cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
-        if st.button("Nieuwe Vraag"):
-            st.session_state.vraag = random.choice(list(data["woorden"][cat].keys()))
-            st.rerun()
-        if 'vraag' in st.session_state:
-            v = st.session_state.vraag
-            ans = st.text_input(f"Vertaal: {v}")
-            if st.button("Check"):
-                if ans.lower() == data["woorden"][cat][v].lower():
-                    data["geld"] += 10; db["users"][user] = data; sla_db_op(db); st.success("Correct! +€10")
-    with t2:
-        f = st.text_input("Frans"); n = st.text_input("Nederlands")
-        if st.button("Opslaan"):
-            data["woorden"]["woorden"][f] = n; db["users"][user] = data; sla_db_op(db); st.rerun()
-
-elif page == "Klas":
+if page == "Klas":
     st.title("🏫 Putsie Klaslokaal")
-    
-    # LEERKRACHT (Maakt taak + antwoord)
     if user.lower() in LEERKRACHTEN:
         naam = st.text_input("Naam nieuwe klas:")
         if st.button("Genereer Klas"):
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             db["klassen"][code] = {"naam": naam, "docent": user, "taken": []}; sla_db_op(db); st.rerun()
-            
         for code, info in db["klassen"].items():
             if info["docent"] == user:
                 with st.expander(f"Klas: {info['naam']} (Code: {code})"):
-                    taak_vraag = st.text_input("Wat moet de leerling vertalen?", key=f"q_{code}")
-                    taak_antwoord = st.text_input("Wat is het juiste antwoord?", key=f"a_{code}")
-                    beloning = st.number_input("Bedrag:", value=20, key=f"b_{code}")
-                    if st.button("Plaats Taak", key=f"p_{code}"):
-                        info["taken"].append({"vraag": taak_vraag, "antwoord": taak_antwoord, "beloning": beloning})
-                        sla_db_op(db); st.rerun()
-
-    # LEERLING (Moet het antwoord van de leraar raden)
+                    t_vraag = st.text_input("Vraag:", key=f"q_{code}")
+                    t_ant = st.text_input("Antwoord:", key=f"a_{code}")
+                    b = st.number_input("Bedrag:", value=20, key=f"b_{code}")
+                    if st.button("Plaats", key=f"p_{code}"):
+                        info["taken"].append({"vraag": t_vraag, "antwoord": t_ant, "beloning": b}); sla_db_op(db); st.rerun()
     else:
         if not data.get("klas_id"):
             c = st.text_input("Vul klascode in:").upper()
@@ -112,26 +87,25 @@ elif page == "Klas":
                 if c in db["klassen"]:
                     data["klas_id"] = c; db["users"][user] = data; sla_db_op(db); st.rerun()
         else:
+            if "voltooide_taken" not in data: data["voltooide_taken"] = []
             klas = db["klassen"].get(data["klas_id"], {})
             st.subheader(f"Klas: {klas.get('naam')}")
-            
-            # Toon taken
             for i, taak in enumerate(klas.get("taken", [])):
-                if st.button(f"Taak: {taak['vraag']} (+€{taak['beloning']})", key=f"btn_{i}"):
+                is_gedaan = i in data["voltooide_taken"]
+                if st.button(f"{'✅' if is_gedaan else 'Start'} {taak['vraag']} (+€{taak['beloning']})", key=f"btn_{i}", disabled=is_gedaan):
                     st.session_state.actieve_taak = {"idx": i, "data": taak}
-            
-            # Quiz-invoer voor de gekozen taak
             if 'actieve_taak' in st.session_state:
                 t = st.session_state.actieve_taak
-                st.write(f"---")
-                st.write(f"Vertaal: **{t['data']['vraag']}**")
-                ant = st.text_input("Jouw antwoord:", key="input_ant")
-                if st.button("Check antwoord"):
+                ant = st.text_input(f"Vertaal: {t['data']['vraag']}")
+                if st.button("Check"):
                     if ant.lower().strip() == t['data']['antwoord'].lower().strip():
-                        data["geld"] += t['data']['beloning']
-                        db["users"][user] = data
-                        sla_db_op(db)
-                        st.success(f"Goed gedaan! +€{t['data']['beloning']}")
+                        data["geld"] += t['data']['beloning']; data["voltooide_taken"].append(t['idx']); db["users"][user] = data; sla_db_op(db); del st.session_state.actieve_taak; st.rerun()
+                    else: st.error("Niet goed!")
+elif page == "Frans":
+    st.title("🎓 Frans & Werkwoorden")
+    st.write("Frans sectie actief")
+else:
+    st.title("🏠 Welkom bij Putsie Studios!")
                         del st.session_state.actieve_taak
                         st.rerun()
                     else:
