@@ -101,7 +101,9 @@ if page == "Frans":
                 st.subheader(f"Vertaal: **{st.session_state.vraag}**")
                 ans = st.text_input("Jouw antwoord:")
                 if st.button("Controleer ✔️"):
-                    if ans.lower().strip() == data["woorden"][cat][st.session_state.vraag].lower().strip():
+                    # Veilig antwoord checken
+                    correct_antwoord = data["woorden"][cat].get(st.session_state.vraag, "")
+                    if ans.lower().strip() == correct_antwoord.lower().strip():
                         data["geld"] += 10
                         db["users"][user] = data
                         sla_db_op(db)
@@ -130,11 +132,10 @@ elif page == "Klas":
     
     # ------------------ LEERKRACHT GEDEELTE ------------------
     if user.lower() in LEERKRACHTEN:
-        # Check of de leraar al EEN klas heeft (Maximaal 1)
         mijn_klas_code = None
         mijn_klas_info = None
         for code, info in db["klassen"].items():
-            if info["docent"] == user:
+            if info.get("docent") == user:
                 mijn_klas_code = code
                 mijn_klas_info = info
                 break
@@ -151,8 +152,7 @@ elif page == "Klas":
                     else:
                         st.warning("Vul een naam in!")
         else:
-            # Cool Dashboard voor Leraar
-            st.subheader(f"🎒 Klas: **{mijn_klas_info['naam']}**")
+            st.subheader(f"🎒 Klas: **{mijn_klas_info.get('naam', 'Onbekend')}**")
             st.success(f"🔑 Jouw klascode is: **{mijn_klas_code}** (Deel deze met je leerlingen!)")
             
             col1, col2 = st.columns(2)
@@ -164,6 +164,7 @@ elif page == "Klas":
                     b = st.number_input("Beloning (€):", value=20, min_value=1, key="new_b")
                     if st.button("Plaats Taak 🚀", type="primary", use_container_width=True):
                         if q and a:
+                            if "taken" not in mijn_klas_info: mijn_klas_info["taken"] = []
                             mijn_klas_info["taken"].append({"vraag": q, "antwoord": a, "beloning": b})
                             sla_db_op(db); st.rerun()
                         else:
@@ -176,11 +177,14 @@ elif page == "Klas":
                     if not takenlijst:
                         st.write("Je hebt nog geen taken geplaatst.")
                     for i, taak in enumerate(takenlijst):
-                        st.markdown(f"**{i+1}. {taak['vraag']}** ➔ *{taak['antwoord']}* (💰 €{taak['beloning']})")
+                        # Veilige manier om data op te halen (voorkomt KeyError bij oude data)
+                        v = taak.get("vraag", "Oude/kapotte taak")
+                        ant = taak.get("antwoord", "?")
+                        bel = taak.get("beloning", 0)
+                        st.markdown(f"**{i+1}. {v}** ➔ *{ant}* (💰 €{bel})")
 
     # ------------------ LEERLING GEDEELTE ------------------
     else:
-        # Heeft de leerling al een klas?
         if not data.get("klas_id"):
             st.info("👋 Je zit nog niet in een klas. Vraag je leerkracht om de code!")
             with st.container(border=True):
@@ -193,7 +197,6 @@ elif page == "Klas":
                     else:
                         st.error("❌ Oeps! Die code bestaat niet.")
         else:
-            # Cool Dashboard voor Leerling
             klas = db["klassen"].get(data["klas_id"], {})
             st.subheader(f"🎓 Welkom in: **{klas.get('naam', 'Onbekende Klas')}**")
             
@@ -214,35 +217,45 @@ elif page == "Klas":
                     
                 for i, taak in enumerate(taken):
                     is_done = i in voltooide_taken
+                    
+                    # Veilig data ophalen
+                    vraag_tekst = taak.get("vraag", "Oude of onbekende vraag")
+                    beloning_bedrag = taak.get("beloning", 0)
+                    
                     with st.container(border=True):
                         colA, colB = st.columns([3, 1])
                         with colA:
-                            st.markdown(f"**{'✅' if is_done else '📝'} {taak.get('vraag', '??')}**")
+                            st.markdown(f"**{'✅' if is_done else '📝'} {vraag_tekst}**")
                             if is_done:
                                 st.caption("Voltooid! 🎉")
                             else:
-                                st.caption(f"Verdien 💰 €{taak.get('beloning', 0)}")
+                                st.caption(f"Verdien 💰 €{beloning_bedrag}")
                         with colB:
                             if not is_done:
                                 if st.button("Start", key=f"start_{i}", type="primary", use_container_width=True):
                                     st.session_state.active = {"idx": i, "data": taak}
             
-            # De actieve Quiz-box wordt onderaan getoond
             if 'active' in st.session_state:
                 st.markdown("---")
                 t = st.session_state.active
-                st.subheader(f"✍️ Taak: Vertaal '{t['data']['vraag']}'")
+                
+                # Veilig data ophalen in het quiz-gedeelte
+                vraag_tekst = t['data'].get('vraag', 'Onbekende Vraag')
+                antwoord_tekst = t['data'].get('antwoord', '')
+                beloning_bedrag = t['data'].get('beloning', 0)
+                
+                st.subheader(f"✍️ Taak: Vertaal '{vraag_tekst}'")
                 with st.container(border=True):
                     ans = st.text_input("Wat is de juiste vertaling?", key="ans_input")
                     if st.button("Check Antwoord ✔️", type="primary"):
-                        if ans.lower().strip() == t['data']['antwoord'].lower().strip():
-                            data["geld"] = data.get("geld", 0) + t['data']['beloning']
+                        if antwoord_tekst and ans.lower().strip() == antwoord_tekst.lower().strip():
+                            data["geld"] = data.get("geld", 0) + beloning_bedrag
                             if "voltooide_taken" not in data: data["voltooide_taken"] = []
                             data["voltooide_taken"].append(t['idx'])
                             db["users"][user] = data
                             sla_db_op(db)
                             del st.session_state.active
-                            st.success(f"Super! Je hebt €{t['data']['beloning']} verdiend!")
+                            st.success(f"Super! Je hebt €{beloning_bedrag} verdiend!")
                             st.rerun()
                         else:
                             st.error("Helaas, dat klopt niet. Probeer het nog eens! ❌")
