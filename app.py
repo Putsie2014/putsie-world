@@ -86,17 +86,25 @@ if page == "Frans":
 
 elif page == "Klas":
     st.title("🏫 Putsie Klaslokaal")
+    
+    # LEERKRACHT (Maakt taak + antwoord)
     if user.lower() in LEERKRACHTEN:
         naam = st.text_input("Naam nieuwe klas:")
         if st.button("Genereer Klas"):
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             db["klassen"][code] = {"naam": naam, "docent": user, "taken": []}; sla_db_op(db); st.rerun()
+            
         for code, info in db["klassen"].items():
             if info["docent"] == user:
                 with st.expander(f"Klas: {info['naam']} (Code: {code})"):
-                    t = st.text_input("Taak:", key=f"t_{code}"); b = st.number_input("Bedrag:", value=20, key=f"b_{code}")
-                    if st.button("Plaats", key=f"p_{code}"):
-                        info["taken"].append({"taak": t, "beloning": b}); sla_db_op(db); st.rerun()
+                    taak_vraag = st.text_input("Wat moet de leerling vertalen?", key=f"q_{code}")
+                    taak_antwoord = st.text_input("Wat is het juiste antwoord?", key=f"a_{code}")
+                    beloning = st.number_input("Bedrag:", value=20, key=f"b_{code}")
+                    if st.button("Plaats Taak", key=f"p_{code}"):
+                        info["taken"].append({"vraag": taak_vraag, "antwoord": taak_antwoord, "beloning": beloning})
+                        sla_db_op(db); st.rerun()
+
+    # LEERLING (Moet het antwoord van de leraar raden)
     else:
         if not data.get("klas_id"):
             c = st.text_input("Vul klascode in:").upper()
@@ -106,13 +114,25 @@ elif page == "Klas":
         else:
             klas = db["klassen"].get(data["klas_id"], {})
             st.subheader(f"Klas: {klas.get('naam')}")
-            for i, taak in enumerate(klas.get("taken", [])):
-                if st.button(f"Start: {taak['taak']} (+€{taak['beloning']})", key=f"start_{i}"):
-                    st.session_state.actieve_taak = taak
             
+            # Toon taken
+            for i, taak in enumerate(klas.get("taken", [])):
+                if st.button(f"Taak: {taak['vraag']} (+€{taak['beloning']})", key=f"btn_{i}"):
+                    st.session_state.actieve_taak = {"idx": i, "data": taak}
+            
+            # Quiz-invoer voor de gekozen taak
             if 'actieve_taak' in st.session_state:
                 t = st.session_state.actieve_taak
-                st.write(f"Vertaal iets uit je woordenlijst voor taak: **{t['taak']}**")
-                ant = st.text_input("Jouw vertaling:")
-                if st.button("Voltooien"):
-                    data["geld"] += t['beloning']; db["users"][user] = data; sla_db_op(db); del st.session_state.actieve_taak; st.rerun()
+                st.write(f"---")
+                st.write(f"Vertaal: **{t['data']['vraag']}**")
+                ant = st.text_input("Jouw antwoord:", key="input_ant")
+                if st.button("Check antwoord"):
+                    if ant.lower().strip() == t['data']['antwoord'].lower().strip():
+                        data["geld"] += t['data']['beloning']
+                        db["users"][user] = data
+                        sla_db_op(db)
+                        st.success(f"Goed gedaan! +€{t['data']['beloning']}")
+                        del st.session_state.actieve_taak
+                        st.rerun()
+                    else:
+                        st.error("Niet goed, probeer het nog eens!")
