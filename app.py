@@ -1,10 +1,7 @@
 import streamlit as st
 import json
 import os
-import random
-import string
-from datetime import datetime
-from openai import OpenAI
+from openai import OpenAI  # <--- Dit moet overeenkomen met de requirements!
 
 # --- 1. CONFIGURATIE & SETUP ---
 DB_FILE = "database.json"
