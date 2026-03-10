@@ -7,17 +7,23 @@ import random
 DB_FILE = "database.json"
 st.set_page_config(page_title="Putsie Studios", layout="wide")
 
-if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
-if 'page' not in st.session_state: st.session_state.page = "Home"
+def init_db():
+    if not os.path.exists(DB_FILE):
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump({"users": {}}, f)
 
 def laad_db():
-    if not os.path.exists(DB_FILE): return {"users": {}}
     try:
         with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
     except: return {"users": {}}
 
 def sla_db_op(db):
     with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db, f, indent=4)
+
+init_db()
+
+if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
+if 'page' not in st.session_state: st.session_state.page = "Home"
 
 # --- 2. LOGIN ---
 if not st.session_state.ingelogd:
@@ -47,17 +53,14 @@ if not st.session_state.ingelogd:
 db = laad_db()
 user = st.session_state.username
 data = db["users"][user]
-if "woorden" not in data: data["woorden"] = {"werkwoorden": {}, "woorden": {}}
 
 with st.sidebar:
     st.title(f"👤 {user.capitalize()}")
     st.metric("Saldo", f"€{data['geld']}")
     st.write("---")
     if st.button("🏠 Home", use_container_width=True): st.session_state.page = "Home"
-    st.write("### 🎓 Education")
-    if st.button("🇫🇷 Frans", use_container_width=True): st.session_state.page = "Frans"
-    st.write("### 📖 Entertainment")
-    if st.button("📚 Strips", use_container_width=True): st.session_state.page = "Strips"
+    if st.button("🇫🇷 Frans & Werkwoorden", use_container_width=True): st.session_state.page = "Frans"
+    if st.button("📖 Strips", use_container_width=True): st.session_state.page = "Strips"
     if st.button("🕹️ Games", use_container_width=True): st.session_state.page = "Games"
     if st.button("🎧 Music", use_container_width=True): st.session_state.page = "Music"
     st.write("---")
@@ -66,66 +69,68 @@ with st.sidebar:
 # --- 4. PAGINA'S ---
 if st.session_state.page == "Frans":
     st.title("🎓 Putsie Education: Frans")
-    t1, t2 = st.tabs(["🎯 Quiz", "➕ Toevoegen"])
+    t1, t2, t3 = st.tabs(["🎯 Quiz", "➕ Toevoegen", "📋 Overzicht"])
     
     with t1:
-        # Quiz logica
-        cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
-        
-        if st.button("Nieuwe Vraag 🆕"):
-            if cat == "woorden":
-                st.session_state.vraag = random.choice(list(data["woorden"]["woorden"].keys()))
-            else:
-                st.session_state.vraag = random.choice(list(data["woorden"]["werkwoorden"].keys()))
-            st.session_state.vorm = random.choice(["je", "tu", "il", "nous", "vous", "ils"])
-            st.session_state.answered = False
+        if len(data["woorden"]["woorden"]) + len(data["woorden"]["werkwoorden"]) < 10:
+            st.warning("Voeg minstens 10 woorden toe!")
+        else:
+            cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
+            if st.button("Nieuwe Vraag 🆕"):
+                if cat == "woorden": st.session_state.vraag = random.choice(list(data["woorden"]["woorden"].keys()))
+                else: 
+                    st.session_state.vraag = random.choice(list(data["woorden"]["werkwoorden"].keys()))
+                    st.session_state.vorm = random.choice(["je", "tu", "il", "nous", "vous", "ils"])
+                st.session_state.answered = False
             
-        if 'vraag' in st.session_state:
-            v = st.session_state.vraag
-            if cat == "woorden":
-                st.write(f"Vertaal: **{data['woorden']['woorden'][v]}**")
-                juist = v
-            else:
-                vorm = st.session_state.vorm
-                st.write(f"Vervoeg **{v}** ({data['woorden']['werkwoorden'][v]['ned']}) in de **{vorm}** vorm:")
-                juist = data["woorden"]["werkwoorden"][v][vorm]
-            
-            with st.form(key="q_form", clear_on_submit=True):
-                ant = st.text_input("Antwoord:").lower().strip()
-                if st.form_submit_button("Check ✅"):
-                    if ant == juist:
-                        data["geld"] += 15
-                        sla_db_op(db)
-                        st.success("Correct! +€15"); st.balloons()
-                    else: st.error(f"Fout! Het was: {juist}")
+            if 'vraag' in st.session_state:
+                v = st.session_state.vraag
+                with st.form(key="q_form", clear_on_submit=True):
+                    if cat == "woorden": 
+                        st.write(f"Vertaal: **{data['woorden']['woorden'][v]}**")
+                        juist = v
+                    else: 
+                        st.write(f"Vervoeg **{v}** ({data['woorden']['werkwoorden'][v]['ned']}) - **{st.session_state.vorm}**:")
+                        juist = data["woorden"]["werkwoorden"][v][st.session_state.vorm]
+                    
+                    ant = st.text_input("Antwoord:").lower().strip()
+                    if st.form_submit_button("Check ✅"):
+                        if ant == juist:
+                            data["geld"] += 15
+                            sla_db_op(db)
+                            st.success("Correct! +€15"); st.balloons()
+                        else: st.error(f"Fout! Het juiste antwoord was: {juist}")
 
     with t2:
-        keuze = st.radio("Toevoegen:", ["Woord", "Werkwoord"])
+        keuze = st.radio("Wat voeg je toe?", ["Woord", "Werkwoord"])
         if keuze == "Woord":
             with st.form("add_w", clear_on_submit=True):
                 f = st.text_input("Frans:").lower().strip()
                 n = st.text_input("Nederlands:").lower().strip()
                 if st.form_submit_button("Opslaan"):
                     data["woorden"]["woorden"][f] = n
-                    sla_db_op(db)
-                    st.success("Toegevoegd!")
+                    sla_db_op(db); st.rerun()
         else:
             with st.form("add_ww", clear_on_submit=True):
                 inf = st.text_input("Heel werkwoord:").lower().strip()
-                ned = st.text_input("Nederlandse betekenis:").lower().strip()
+                ned = st.text_input("Betekenis:").lower().strip()
                 c1, c2 = st.columns(2)
                 with c1:
-                    je = st.text_input("Je:").lower().strip()
-                    tu = st.text_input("Tu:").lower().strip()
-                    il = st.text_input("Il/Elle:").lower().strip()
+                    je = st.text_input("Je:")
+                    tu = st.text_input("Tu:")
+                    il = st.text_input("Il/Elle:")
                 with c2:
-                    nous = st.text_input("Nous:").lower().strip()
-                    vous = st.text_input("Vous:").lower().strip()
-                    ils = st.text_input("Ils/Elles:").lower().strip()
-                if st.form_submit_button("Werkwoord Opslaan"):
+                    nous = st.text_input("Nous:")
+                    vous = st.text_input("Vous:")
+                    ils = st.text_input("Ils/Elles:")
+                if st.form_submit_button("Werkwoord Opslaan 💾"):
                     data["woorden"]["werkwoorden"][inf] = {"ned": ned, "je": je, "tu": tu, "il": il, "nous": nous, "vous": vous, "ils": ils}
-                    sla_db_op(db)
-                    st.success("Werkwoord toegevoegd!")
+                    sla_db_op(db); st.rerun()
+
+    with t3:
+        st.subheader("Jouw Woordenlijst")
+        st.write("### Woorden", data["woorden"]["woorden"])
+        st.write("### Werkwoorden", data["woorden"]["werkwoorden"])
 
 elif st.session_state.page == "Strips": st.title("📖 Putsie Strips")
 elif st.session_state.page == "Games": st.title("🕹️ Putsie Games")
