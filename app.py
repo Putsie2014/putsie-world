@@ -3,17 +3,58 @@ import json
 import os
 from openai import OpenAI
 
-# --- 1. CONFIGURATIE & SETUP ---
+# --- CONFIGURATIE ---
 DB_FILE = "database.json"
 APP_FILE = "app.py"
-LEERKRACHTEN = ["elliot", "annelies", "admin"]
 SUPER_ADMIN = "elliot"
 SITE_TITLE = "(indev) Putsie EDUCATION 🎓"
 
-# OpenAI Client Setup (Jouw sk-... key)
+# OpenAI Setup
 client = OpenAI(api_key="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")
 
-st.set_page_config(page_title=SITE_TITLE, page_icon="🎓", layout="wide")
+st.set_page_config(page_title=SITE_TITLE, page_icon="🎓")
+
+# --- DATABASE FUNCTIES ---
+def laad_db():
+    if not os.path.exists(DB_FILE):
+        db = {"users": {"elliot": {"password": "admin", "geld": 9999, "klas_id": None}}, "klassen": {}}
+        with open(DB_FILE, "w") as f: json.dump(db, f)
+        return db
+    with open(DB_FILE, "r") as f:
+        try: return json.load(f)
+        except: return {"users": {"elliot": {"password": "admin", "geld": 9999, "klas_id": None}}, "klassen": {}}
+
+def sla_db_op(db):
+    with open(DB_FILE, "w") as f: json.dump(db, f, indent=4)
+
+# --- INLOG LOGICA ---
+db = laad_db()
+if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
+
+if not st.session_state.ingelogd:
+    st.title("Login bij " + SITE_TITLE)
+    u = st.text_input("Gebruikersnaam").lower().strip()
+    p = st.text_input("Wachtwoord", type="password")
+    
+    if st.button("Log In"):
+        # Check of user bestaat
+        if u in db["users"] and db["users"][u].get("password") == p:
+            st.session_state.ingelogd = True
+            st.session_state.username = u
+            st.rerun()
+        else:
+            st.error("Gebruiker niet gevonden of fout wachtwoord. Probeer: elliot / admin")
+    
+    if st.button("Database Resetten (Fix)"):
+        db = {"users": {"elliot": {"password": "admin", "geld": 9999, "klas_id": None}}, "klassen": {}}
+        sla_db_op(db)
+        st.success("Database gereset! Probeer nu in te loggen met elliot / admin")
+    st.stop()
+
+# Als je hier bent, ben je ingelogd
+user = st.session_state.username
+st.write(f"Welkom {user}!")
+if st.button("Log uit"): st.session_state.clear(); st.rerun()
 
 # --- 2. VISUAL STYLING ---
 def apply_custom_styles():
