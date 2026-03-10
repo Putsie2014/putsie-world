@@ -59,6 +59,11 @@ elif st.session_state.page == "Klas":
     st.title("🏫 Putsie Klaslokaal")
     db = laad_db()
     
+# --- 4. PAGINA LOGICA ---
+elif st.session_state.page == "Klas":
+    st.title("🏫 Putsie Klaslokaal")
+    db = laad_db()
+    
     # LEERKRACHT (Elliot / Annelies)
     if user.lower() in LEERKRACHTEN:
         st.subheader("Beheer je klassen")
@@ -99,7 +104,6 @@ elif st.session_state.page == "Klas":
                     data["geld"] += taak["beloning"]
                     db["users"][user] = data
                     sla_db_op(db); st.rerun()
-
 else:
     st.title("🏠 Welkom bij Putsie Studios!")
             col1, col2 = st.columns(2)
