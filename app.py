@@ -27,7 +27,7 @@ def sla_db_op(db):
 
 init_db()
 
-# --- 2. LOGIN & REGISTRATIE ---
+# --- 2. LOGIN & REGISTRATIE (Verbeterd) ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 
 if not st.session_state.ingelogd:
@@ -39,32 +39,29 @@ if not st.session_state.ingelogd:
         u = st.text_input("Naam", key="l_u").lower().strip()
         p = st.text_input("Wachtwoord", type="password", key="l_p")
         if st.button("Log in"):
-            if u in db["users"] and db["users"][u]["password"] == p:
+            if u in db["users"] and db["users"][u].get("password") == p:
                 st.session_state.ingelogd = True; st.session_state.username = u; st.rerun()
-            else: st.error("Fout!")
+            else: st.error("Gebruikersnaam of wachtwoord onjuist!")
             
     with tab2:
         ru = st.text_input("Kies Naam", key="r_u").lower().strip()
         rp = st.text_input("Kies Wachtwoord", type="password", key="r_p")
         if st.button("Maak Account"):
-            if ru and ru not in db["users"]:
-                db["users"][ru] = {"password": rp, "geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None}
-                sla_db_op(db); st.success("Account aangemaakt!"); st.rerun()
+            if not ru or not rp:
+                st.warning("Vul beide velden in!")
+            elif ru in db["users"]:
+                st.error("Deze naam bestaat al!")
+            else:
+                # Hier maken we de nieuwe gebruiker met alle benodigde velden
+                db["users"][ru] = {
+                    "password": rp, 
+                    "geld": 100, 
+                    "woorden": {"werkwoorden": {}, "woorden": {}}, 
+                    "klas_id": None
+                }
+                sla_db_op(db)
+                st.success("Account aangemaakt! Log nu in via het tabblad 'Inloggen'.")
     st.stop()
-
-# --- 3. SIDEBAR ---
-db = laad_db()
-user = st.session_state.username
-data = db["users"].get(user, {"geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None})
-
-with st.sidebar:
-    st.title(f"👤 {user.capitalize()}")
-    st.metric("Saldo", f"€{data.get('geld', 0)}")
-    st.write("---")
-    if st.button("🏠 Home"): st.session_state.page = "Home"
-    if st.button("🇫🇷 Frans & Werkwoorden"): st.session_state.page = "Frans"
-    if st.button("🏫 Klaslokaal"): st.session_state.page = "Klas"
-    if st.button("Uitloggen"): st.session_state.clear(); st.rerun()
 
 # --- 4. PAGINA'S ---
 page = st.session_state.get("page", "Home")
