@@ -4,14 +4,11 @@ import os
 import random
 
 # --- 1. CONFIGURATIE ---
-DB_FILE = "database.json"
-st.set_page_config(page_title="Putsie Studios", layout="wide")
-
+# --- 1. AANPASSING IN INIT_DB (Vervang je huidige functie) ---
 def init_db():
     if not os.path.exists(DB_FILE):
         with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump({"users": {}}, f)
-
+            json.dump({"users": {}, "klassen": {}}, f) # Klassen toegevoegd
 def laad_db():
     try:
         with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
@@ -159,7 +156,55 @@ if st.session_state.page == "Admin":
             if st.button("Sla saldo op"):
                 db["users"][te_beheren]["geld"] = int(nieuw_geld)
                 sla_db_op(db); st.rerun()
-            
+            # --- 2. NIEUWE PAGINA LOGICA (Plaats dit onderaan bij je andere pagina's) ---
+elif st.session_state.page == "Klas":
+    st.title("🏫 Putsie Klaslokaal")
+    db = laad_db()
+    
+    # Leerkracht Paneel (Elliot of Annelies)
+    if user.lower() in ["elliot", "annelies", "admin"]:
+        st.subheader("Beheer je klassen")
+        naam = st.text_input("Naam voor de nieuwe klas:")
+        if st.button("Genereer Klas"):
+            code = ''.join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=5))
+            db["klassen"][code] = {"naam": naam, "docent": user, "leerlingen": [], "taken": []}
+            sla_db_op(db); st.success(f"Klas aangemaakt! De code is: **{code}**"); st.rerun()
+        
+        st.write("---")
+        for code, info in db["klassen"].items():
+            if info["docent"] == user:
+                with st.expander(f"Klas: {info['naam']} (Code: {code})"):
+                    taak = st.text_input(f"Taak voor {info['naam']}:", key=f"t_{code}")
+                    if st.button("Plaats Taak", key=f"btn_{code}"):
+                        info["taken"].append({"taak": taak, "beloning": 20})
+                        sla_db_op(db); st.rerun()
+                        
+    # Leerling Paneel
+    else:
+        # Zoek of de gebruiker al in een klas zit
+        mijn_klas = None
+        for code, info in db["klassen"].items():
+            if user in info["leerlingen"]:
+                mijn_klas = info
+                mijn_klas_code = code
+        
+        if not mijn_klas:
+            st.warning("Je zit nog niet in een klaslokaal.")
+            code_input = st.text_input("Vul hier je klascode in:").upper()
+            if st.button("Deelnemen"):
+                if code_input in db["klassen"]:
+                    db["klassen"][code_input]["leerlingen"].append(user)
+                    sla_db_op(db); st.rerun()
+                else: st.error("Code niet gevonden!")
+        else:
+            st.success(f"Je zit in klas: {mijn_klas['naam']}")
+            st.subheader("Taken van je leraar")
+            for i, taak in enumerate(mijn_klas["taken"]):
+                st.write(f"- {taak['taak']} (Beloning: €{taak['beloning']})")
+                if st.button(f"Taak Voltooid! {i}"):
+                    data["geld"] += taak["beloning"]
+                    db["users"][user] = data
+                    sla_db_op(db); st.rerun()
             st.write("### Overzicht Woordenlijsten")
             col1, col2 = st.columns(2)
             with col1: st.json(gebruiker_data["woorden"]["woorden"])
