@@ -156,9 +156,31 @@ if st.session_state.page == "Admin":
         db = laad_db()
         alle_spelers = list(db["users"].keys())
         te_beheren = st.selectbox("Selecteer speler:", alle_spelers)
+        
         if te_beheren:
-            huidig_geld = db["users"][te_beheren].get("geld", 0)
+            gebruiker_data = db["users"][te_beheren]
+            st.write(f"### Instellingen voor: **{te_beheren.capitalize()}**")
+            
+            # Saldo aanpassen
+            huidig_geld = gebruiker_data.get("geld", 0)
             nieuw_geld = st.number_input("Pas saldo aan:", value=huidig_geld, step=1)
             if st.button("Sla saldo op"):
                 db["users"][te_beheren]["geld"] = int(nieuw_geld)
                 sla_db_op(db); st.rerun()
+            
+            st.write("---")
+            # Overzicht Woordenlijst
+            st.subheader(f"📖 Woordenlijst van {te_beheren}")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write("**Woorden:**")
+                st.json(gebruiker_data["woorden"]["woorden"])
+            with col2:
+                st.write("**Werkwoorden:**")
+                st.json(gebruiker_data["woorden"]["werkwoorden"])
+            
+            st.write("---")
+            # Acties
+            if st.button("Verwijder deze speler"):
+                del db["users"][te_beheren]
+                sla_db_op(db); st.success("Speler verwijderd!"); st.rerun()
