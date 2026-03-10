@@ -155,24 +155,39 @@ if st.session_state.page == "Admin":
     st.title("🛡️ Beheer: Putsie Studios")
     db = laad_db()
     
-    # Lijst van alle spelers
+    # 1. Speler Selectie
     spelers = list(db["users"].keys())
-    te_verwijderen = st.selectbox("Selecteer speler om te beheren:", spelers)
+    te_beheren = st.selectbox("Selecteer speler om te bewerken:", spelers)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Speler Data Wipen"):
-            # Reset de data van de geselecteerde speler
-            db["users"][te_verwijderen]["woorden"] = {"werkwoorden": {}, "woorden": {}}
-            db["users"][te_verwijderen]["geld"] = 0
+    if te_beheren:
+        st.write(f"### Instellingen voor: {te_beheren}")
+        
+        # 2. Geld aanpassen
+        huidig_geld = db["users"][te_beheren]["geld"]
+        nieuw_geld = st.number_input("Pas saldo aan:", value=huidig_geld, step=1)
+        
+        if st.button("Sla nieuw saldo op"):
+            db["users"][te_beheren]["geld"] = int(nieuw_geld)
             sla_db_op(db)
-            st.success(f"Data van {te_verwijderen} is gewiped!")
-    with col2:
-        if st.button("Speler Verwijderen"):
-            del db["users"][te_verwijderen]
-            sla_db_op(db)
-            st.success(f"Speler {te_verwijderen} is verwijderd!")
+            st.success(f"Saldo van {te_beheren} aangepast naar €{nieuw_geld}!")
             st.rerun()
-            
-    st.write("### Huidige Data overzicht")
-    st.json(db["users"][te_verwijderen])
+
+        st.write("---")
+        
+        # 3. Data Acties (Wipe/Verwijder)
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Wipe Woordenlijst"):
+                db["users"][te_beheren]["woorden"] = {"werkwoorden": {}, "woorden": {}}
+                sla_db_op(db)
+                st.success("Woordenlijst leeggemaakt!")
+                st.rerun()
+        with col2:
+            if st.button("Verwijder Speler"):
+                del db["users"][te_beheren]
+                sla_db_op(db)
+                st.success("Speler verwijderd!")
+                st.rerun()
+
+        st.write("### Huidige Data overzicht")
+        st.json(db["users"][te_beheren])
