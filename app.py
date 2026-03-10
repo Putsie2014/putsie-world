@@ -9,87 +9,95 @@ st.set_page_config(page_title="Putsie Studios", layout="wide")
 
 # --- DATABASE FUNCTIES ---
 def laad_db():
-    if not os.path.exists(DB_FILE): return {"users": {}}
-    with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
+    if not os.path.exists(DB_FILE): 
+        return {"users": {}}
+    with open(DB_FILE, "r", encoding="utf-8") as f: 
+        return json.load(f)
 
 def sla_db_op(db):
-    with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db, f, indent=4)
+    with open(DB_FILE, "w", encoding="utf-8") as f: 
+        json.dump(db, f, indent=4)
 
-# --- SESSIE INITIALISATIE ---
+# --- LOGIN LOGICA ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 if 'page' not in st.session_state: st.session_state.page = "Home"
 
-# --- LOGIN LOGICA (Blijft voor de zijbalk) ---
 if not st.session_state.ingelogd:
-    st.title("🌍 Welkom bij Putsie Studios")
-    with st.form("login_form"):
-        u = st.text_input("Gebruikersnaam").lower().strip()
-        p = st.text_input("Wachtwoord", type="password")
-        if st.form_submit_button("Inloggen / Registreren"):
-            db = laad_db()
-            if u not in db["users"]:
-                db["users"][u] = {"password": p, "geld": 0, "land": 0, "woorden": {}}
-                sla_db_op(db)
-            if db["users"][u]["password"] == p:
-                st.session_state.ingelogd = True
-                st.session_state.username = u
-                st.rerun()
-            else: st.error("Wachtwoord fout!")
+    st.title("🌍 Putsie Studios - Login")
+    u = st.text_input("Gebruikersnaam").lower().strip()
+    p = st.text_input("Wachtwoord", type="password")
+    if st.button("Inloggen"):
+        db = laad_db()
+        if u not in db["users"]:
+            db["users"][u] = {"password": p, "geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}}
+            sla_db_op(db)
+        if db["users"][u]["password"] == p:
+            st.session_state.ingelogd = True
+            st.session_state.username = u
+            st.rerun()
     st.stop()
 
-# --- ZIJKANT: MENU (Nu met data toegang) ---
+# --- DATA LADEN ---
 db = laad_db()
-user = st.session_state.username
-u_data = db["users"][user]
+u = st.session_state.username
+data = db["users"][u]
 
+# --- ZIJKANT (VOLLEDIG HERSTELD) ---
 with st.sidebar:
-    st.title(f"👤 {user.capitalize()}")
-    st.write(f"💰 {u_data['geld']} | 🏰 {u_data['land']}km²")
+    st.title(f"👤 {u.capitalize()}")
+    st.write(f"💰 {data.get('geld', 0)}")
     st.write("---")
-    if st.button("🏠 Home", use_container_width=True): st.session_state.page = "Home"
+    
     st.write("### 🎓 Putsie Education")
     if st.button("🇫🇷 Frans", use_container_width=True): st.session_state.page = "Frans"
+    
     st.write("### 📖 Putsie Strips")
     if st.button("📚 Strips", use_container_width=True): st.session_state.page = "Strips"
+    
     st.write("### 🎮 Putsie Games")
     if st.button("🕹️ Games", use_container_width=True): st.session_state.page = "Games"
+    
     st.write("### 🎵 Putsie Music")
     if st.button("🎧 Music", use_container_width=True): st.session_state.page = "Music"
+    
     st.write("---")
-    if st.button("Uitloggen"): st.session_state.clear(); st.rerun()
+    if st.button("Uitloggen", use_container_width=True): st.session_state.clear(); st.rerun()
 
 # --- PAGINA'S ---
-if st.session_state.page == "Home":
-    st.title("Welkom bij Putsie Studios!")
-    st.write("Kies een onderdeel in het menu aan de linkerkant.")
-
-elif st.session_state.page == "Frans":
+if st.session_state.page == "Frans":
     st.title("🎓 Putsie Education: Frans")
-    # Hier staat je vertrouwde quiz-logica
-    if not u_data["woorden"]:
-        st.info("Voeg eerst woorden toe!")
-    else:
-        if 'vraag' not in st.session_state: st.session_state.vraag = random.choice(list(u_data["woorden"].keys()))
-        v = st.session_state.vraag
-        st.write(f"Vertaal: **{u_data['woorden'][v]}**")
-        with st.form("quiz", clear_on_submit=True):
-            p = st.text_input("Antwoord:")
-            if st.form_submit_button("Check"):
-                if p.lower().strip() == v.lower():
-                    u_data["geld"] += 100
-                    sla_db_op(db)
-                    st.success("Goed! +€100")
-                    del st.session_state.vraag
-                    st.rerun()
-                else: st.error(f"Fout! Het was: {v}")
+    tab1, tab2 = st.tabs(["Quizzen", "Woorden Toevoegen"])
+    
+    with tab1:
+        cat = st.selectbox("Categorie", ["werkwoorden", "woorden"])
+        if not data["woorden"].get(cat): st.info("Geen woorden in deze categorie.")
+        else:
+            if st.button("Nieuwe vraag"): st.session_state.vraag = random.choice(list(data["woorden"][cat].keys()))
+            if 'vraag' in st.session_state:
+                v = st.session_state.vraag
+                st.write(f"Vertaal: **{data['woorden'][cat][v]}**")
+                ant = st.text_input("Jouw antwoord:")
+                if st.button("Check antwoord"):
+                    if ant.lower().strip() == v.lower():
+                        st.success("Correct! +10 munten")
+                        data["geld"] += 10
+                        sla_db_op(db)
+                    else: st.error(f"Fout! Het was: {v}")
 
-    st.write("---")
-    with st.form("add_word", clear_on_submit=True):
-        f = st.text_input("Frans:")
+    with tab2:
+        cat_toe = st.selectbox("Categorie toevoegen", ["werkwoorden", "woorden"])
+        f = st.text_input("Frans woord:")
         n = st.text_input("Nederlands:")
-        if st.form_submit_button("Toevoegen"):
-            u_data["woorden"][f.lower()] = n.lower()
+        if st.button("Toevoegen"):
+            data["woorden"][cat_toe][f.lower()] = n.lower()
             sla_db_op(db)
-            st.success("Toegevoegd!")
+            st.success(f"Toegevoegd aan {cat_toe}!")
 
-# Hier kun je de rest van de pagina's (Strips, Games, Music) verder uitbouwen
+elif st.session_state.page == "Strips":
+    st.title("📖 Putsie Strips")
+elif st.session_state.page == "Games":
+    st.title("🕹️ Putsie Games")
+elif st.session_state.page == "Music":
+    st.title("🎵 Putsie Music")
+else:
+    st.title("Welkom bij Putsie Studios!")
