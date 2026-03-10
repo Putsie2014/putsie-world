@@ -97,6 +97,3 @@ if st.session_state.get("page") == "Klas":
                         st.rerun()
                     else:
                         st.error("Fout!")
-                        st.rerun()
-                    else:
-                        st.error("Niet goed, probeer het nog eens!")
