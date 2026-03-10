@@ -142,3 +142,37 @@ elif st.session_state.page == "Strips": st.title("📖 Putsie Strips")
 elif st.session_state.page == "Games": st.title("🕹️ Putsie Games")
 elif st.session_state.page == "Music": st.title("🎵 Putsie Music")
 else: st.title("🏠 Welkom bij Putsie Studios!")
+
+# --- 5. BEHEERDERS PANEEL (Alleen voor Elliot) ---
+if st.session_state.ingelogd and st.session_state.username == "elliot":
+    with st.sidebar:
+        st.write("---")
+        st.subheader("⚙️ Beheerpaneel")
+        if st.button("Beheer Spelers"):
+            st.session_state.page = "Admin"
+
+if st.session_state.page == "Admin":
+    st.title("🛡️ Beheer: Putsie Studios")
+    db = laad_db()
+    
+    # Lijst van alle spelers
+    spelers = list(db["users"].keys())
+    te_verwijderen = st.selectbox("Selecteer speler om te beheren:", spelers)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Speler Data Wipen"):
+            # Reset de data van de geselecteerde speler
+            db["users"][te_verwijderen]["woorden"] = {"werkwoorden": {}, "woorden": {}}
+            db["users"][te_verwijderen]["geld"] = 0
+            sla_db_op(db)
+            st.success(f"Data van {te_verwijderen} is gewiped!")
+    with col2:
+        if st.button("Speler Verwijderen"):
+            del db["users"][te_verwijderen]
+            sla_db_op(db)
+            st.success(f"Speler {te_verwijderen} is verwijderd!")
+            st.rerun()
+            
+    st.write("### Huidige Data overzicht")
+    st.json(db["users"][te_verwijderen])
