@@ -143,8 +143,11 @@ elif st.session_state.page == "Games": st.title("🕹️ Putsie Games")
 elif st.session_state.page == "Music": st.title("🎵 Putsie Music")
 else: st.title("🏠 Welkom bij Putsie Studios!")
 
-# --- 5. BEHEERDERS PANEEL (Alleen voor Elliot) ---
-if st.session_state.ingelogd and st.session_state.username ["elliot", "Admin",] :
+# --- 5. BEHEERDERS PANEEL ---
+# Voeg hier namen toe die toegang mogen hebben tot het admin paneel
+ADMIN_LIJST = ["elliot", "admin"] 
+
+if st.session_state.ingelogd and st.session_state.username.lower() in ADMIN_LIJST:
     with st.sidebar:
         st.write("---")
         st.subheader("⚙️ Beheerpaneel")
@@ -152,42 +155,54 @@ if st.session_state.ingelogd and st.session_state.username ["elliot", "Admin",] 
             st.session_state.page = "Admin"
 
 if st.session_state.page == "Admin":
-    st.title("🛡️ Beheer: Putsie Studios")
-    db = laad_db()
-    
-    # 1. Speler Selectie
-    spelers = list(db["users"].keys())
-    te_beheren = st.selectbox("Selecteer speler om te bewerken:", spelers)
-    
-    if te_beheren:
-        st.write(f"### Instellingen voor: {te_beheren}")
+    # Dubbele controle voor veiligheid
+    if st.session_state.username.lower() in ADMIN_LIJST:
+        st.title("🛡️ Beheer: Putsie Studios")
+        db = laad_db()
         
-        # 2. Geld aanpassen
-        huidig_geld = db["users"][te_beheren]["geld"]
-        nieuw_geld = st.number_input("Pas saldo aan:", value=huidig_geld, step=1)
+        # Speler selectie
+        alle_spelers = list(db["users"].keys())
+        te_beheren = st.selectbox("Selecteer speler om te bewerken:", alle_spelers)
         
-        if st.button("Sla nieuw saldo op"):
-            db["users"][te_beheren]["geld"] = int(nieuw_geld)
-            sla_db_op(db)
-            st.success(f"Saldo van {te_beheren} aangepast naar €{nieuw_geld}!")
-            st.rerun()
-
-        st.write("---")
-        
-        # 3. Data Acties (Wipe/Verwijder)
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Wipe Woordenlijst"):
-                db["users"][te_beheren]["woorden"] = {"werkwoorden": {}, "woorden": {}}
+        if te_beheren:
+            st.write(f"### Instellingen voor: **{te_beheren}**")
+            
+            # --- Saldo aanpassen ---
+            huidig_geld = db["users"][te_beheren].get("geld", 0)
+            nieuw_geld = st.number_input("Pas saldo aan:", value=huidig_geld, step=1)
+            
+            if st.button("Sla saldo op"):
+                db["users"][te_beheren]["geld"] = int(nieuw_geld)
                 sla_db_op(db)
-                st.success("Woordenlijst leeggemaakt!")
-                st.rerun()
-        with col2:
-            if st.button("Verwijder Speler"):
-                del db["users"][te_beheren]
-                sla_db_op(db)
-                st.success("Speler verwijderd!")
+                st.success(f"Saldo voor {te_beheren} bijgewerkt naar €{nieuw_geld}!")
                 st.rerun()
 
-        st.write("### Huidige Data overzicht")
-        st.json(db["users"][te_beheren])
+            st.write("---")
+            
+            # --- Data Acties ---
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                if st.button("Wipe Woordenlijst"):
+                    db["users"][te_beheren]["woorden"] = {"werkwoorden": {}, "woorden": {}}
+                    sla_db_op(db)
+                    st.success("Woordenlijst leeggemaakt!")
+                    st.rerun()
+            with c2:
+                if st.button("Verwijder Speler"):
+                    del db["users"][te_beheren]
+                    sla_db_op(db)
+                    st.success(f"Speler {te_beheren} verwijderd!")
+                    st.rerun()
+            with c3:
+                # Toekomstige optie voor admin rechten
+                if st.button("Maak Admin"):
+                    if te_beheren.lower() not in ADMIN_LIJST:
+                        ADMIN_LIJST.append(te_beheren.lower())
+                        st.success(f"{te_beheren} is nu ook admin!")
+
+            # --- Data Overzicht ---
+            st.write("### Huidige Database Data")
+            st.json(db["users"][te_beheren])
+            
+    else:
+        st.error("Geen toegang tot dit paneel.")
