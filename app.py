@@ -4,19 +4,64 @@ import os
 import random
 import string
 
-# VOEG DIT TIJDELIJK TOE OM TE RESETTEN
-# Zodra de app is opgestart, kun je deze regels weer verwijderen!
-def reset_database():
-    with open("database.json", "w", encoding="utf-8") as f:
-        json.dump({"users": {}, "klassen": {}}, f)
-
-# reset_database()  # <--- Haal het hekje (#) hier weg om te activeren
 # --- CONFIGURATIE ---
 DB_FILE = "database.json"
 LEERKRACHTEN = ["elliot", "annelies", "admin"]
+
 # Maak de pagina breder en geef een leuk icoontje mee
 st.set_page_config(page_title="Putsie Studios", page_icon="🌍", layout="wide")
 
+# --- CUSTOM CSS VOOR EEN HIGH-END LOOK ---
+def voeg_custom_css_toe():
+    st.markdown("""
+    <style>
+    /* Zachte gradient achtergrond */
+    .stApp {
+        background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+    }
+    
+    /* Mooie witte kaders met schaduw en ronde hoeken */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 20px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        background-color: rgba(255, 255, 255, 0.85) !important;
+        backdrop-filter: blur(10px) !important;
+        border: 1px solid rgba(255,255,255,0.3) !important;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+    }
+    
+    /* Zweef-effect voor de kaders */
+    [data-testid="stVerticalBlockBorderWrapper"]:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15) !important;
+    }
+    
+    /* Knoppen ronder en interactiever maken */
+    .stButton > button {
+        border-radius: 25px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+    
+    /* Knop animatie bij hover */
+    .stButton > button:hover {
+        transform: scale(1.05) translateY(-2px) !important;
+        box-shadow: 0 7px 14px rgba(0,0,0,0.2) !important;
+    }
+    
+    /* Titels wat dikker maken */
+    h1, h2, h3 {
+        font-family: 'Trebuchet MS', sans-serif !important;
+        color: #2c3e50 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Activeer de styling direct
+voeg_custom_css_toe()
+
+# --- DATABASE FUNCTIES ---
 def laad_db():
     if not os.path.exists(DB_FILE): 
         return {"users": {}, "klassen": {}}
@@ -34,8 +79,10 @@ def sla_db_op(db):
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 
 if not st.session_state.ingelogd:
-    st.title("🌍 Welkom bij Putsie Studios")
-    st.write("Log in of maak een account aan om te beginnen!")
+    with st.container():
+        st.title("🌍 Welkom bij Putsie Studios")
+        st.write("Log in of maak een account aan om je avontuur te beginnen!")
+    
     db = laad_db()
     
     tab1, tab2 = st.tabs(["🔐 Inloggen", "📝 Account aanmaken"])
@@ -43,10 +90,11 @@ if not st.session_state.ingelogd:
     with tab1:
         u = st.text_input("Naam", key="l_u").lower().strip()
         p = st.text_input("Wachtwoord", type="password", key="l_p")
-        if st.button("Log in", type="primary"):
+        if st.button("Log in 🚀", type="primary"):
             if u in db["users"] and db["users"][u].get("password") == p:
                 st.session_state.ingelogd = True
                 st.session_state.username = u
+                st.toast(f"Welkom terug, {u.capitalize()}!", icon="👋")
                 st.rerun()
             else: 
                 st.error("Foutieve naam of wachtwoord!")
@@ -54,13 +102,12 @@ if not st.session_state.ingelogd:
     with tab2:
         ru = st.text_input("Kies een Naam", key="r_u").lower().strip()
         rp = st.text_input("Kies een Wachtwoord", type="password", key="r_p")
-        if st.button("Maak Account", type="primary"):
+        if st.button("Maak Account ✨", type="primary"):
             if not ru or not rp:
                 st.warning("Vul beide velden in!")
             elif ru in db["users"]:
                 st.error("Deze naam bestaat al!")
             else:
-                # Maak een compleet nieuw profiel aan
                 db["users"][ru] = {
                     "password": rp, 
                     "geld": 100, 
@@ -69,6 +116,7 @@ if not st.session_state.ingelogd:
                     "woorden": {"woorden": {}, "werkwoorden": {}}
                 }
                 sla_db_op(db)
+                st.balloons()
                 st.success("Account succesvol aangemaakt! Je kunt nu inloggen via het andere tabblad.")
     st.stop()
 
@@ -97,7 +145,7 @@ if page == "Frans":
     t1, t2 = st.tabs(["🎯 Oefen Quiz", "➕ Woorden Toevoegen"])
     with t1:
         cat = st.selectbox("Wat wil je oefenen?", ["woorden", "werkwoorden"])
-        if st.button("Genereer Nieuwe Vraag", type="primary"):
+        if st.button("Genereer Nieuwe Vraag 🎲", type="primary"):
             if data["woorden"][cat]:
                 st.session_state.vraag = random.choice(list(data["woorden"][cat].keys()))
             else:
@@ -108,20 +156,19 @@ if page == "Frans":
                 st.subheader(f"Vertaal: **{st.session_state.vraag}**")
                 ans = st.text_input("Jouw antwoord:")
                 if st.button("Controleer ✔️"):
-                    # Veilig antwoord checken
                     correct_antwoord = data["woorden"][cat].get(st.session_state.vraag, "")
                     if ans.lower().strip() == correct_antwoord.lower().strip():
                         data["geld"] += 10
                         db["users"][user] = data
                         sla_db_op(db)
                         del st.session_state.vraag
-                        st.success("Helemaal goed! 🎉 +€10")
+                        st.toast("Correct! +€10", icon="🎉")
                         st.rerun()
                     else:
-                        st.error("Helaas, probeer het nog eens!")
+                        st.error("Helaas, probeer het nog eens! ❌")
     with t2:
         with st.container(border=True):
-            st.markdown("### Voeg nieuwe vertalingen toe")
+            st.markdown("### ✨ Voeg nieuwe vertalingen toe")
             soort = st.radio("Kies soort:", ["woorden", "werkwoorden"])
             f = st.text_input("Frans (of de vreemde taal):")
             n = st.text_input("Nederlands (jouw taal):")
@@ -130,7 +177,7 @@ if page == "Frans":
                     data["woorden"][soort][f] = n
                     db["users"][user] = data
                     sla_db_op(db)
-                    st.success(f"Opgeslagen: {f} = {n}")
+                    st.toast(f"Opgeslagen: {f} = {n}", icon="✅")
                     st.rerun()
 
 elif page == "Klas":
@@ -184,7 +231,6 @@ elif page == "Klas":
                     if not takenlijst:
                         st.write("Je hebt nog geen taken geplaatst.")
                     for i, taak in enumerate(takenlijst):
-                        # Veilige manier om data op te halen (voorkomt KeyError bij oude data)
                         v = taak.get("vraag", "Oude/kapotte taak")
                         ant = taak.get("antwoord", "?")
                         bel = taak.get("beloning", 0)
@@ -200,7 +246,9 @@ elif page == "Klas":
                     if c in db["klassen"]:
                         data["klas_id"] = c
                         db["users"][user] = data
-                        sla_db_op(db); st.rerun()
+                        sla_db_op(db)
+                        st.balloons()
+                        st.rerun()
                     else:
                         st.error("❌ Oeps! Die code bestaat niet.")
         else:
@@ -224,9 +272,7 @@ elif page == "Klas":
                     
                 for i, taak in enumerate(taken):
                     is_done = i in voltooide_taken
-                    
-                    # Veilig data ophalen
-                    vraag_tekst = taak.get("vraag", "Oude of onbekende vraag")
+                    vraag_tekst = taak.get("vraag", "Onbekende vraag")
                     beloning_bedrag = taak.get("beloning", 0)
                     
                     with st.container(border=True):
@@ -239,14 +285,13 @@ elif page == "Klas":
                                 st.caption(f"Verdien 💰 €{beloning_bedrag}")
                         with colB:
                             if not is_done:
-                                if st.button("Start", key=f"start_{i}", type="primary", use_container_width=True):
+                                if st.button("Start ▶️", key=f"start_{i}", type="primary", use_container_width=True):
                                     st.session_state.active = {"idx": i, "data": taak}
             
             if 'active' in st.session_state:
                 st.markdown("---")
                 t = st.session_state.active
                 
-                # Veilig data ophalen in het quiz-gedeelte
                 vraag_tekst = t['data'].get('vraag', 'Onbekende Vraag')
                 antwoord_tekst = t['data'].get('antwoord', '')
                 beloning_bedrag = t['data'].get('beloning', 0)
@@ -262,11 +307,12 @@ elif page == "Klas":
                             db["users"][user] = data
                             sla_db_op(db)
                             del st.session_state.active
-                            st.success(f"Super! Je hebt €{beloning_bedrag} verdiend!")
-                            st.rerun()
+                            st.balloons()
+                            st.success(f"Super! Je hebt €{beloning_bedrag} verdiend! 🎊")
                         else:
                             st.error("Helaas, dat klopt niet. Probeer het nog eens! ❌")
 
 else:
-    st.title("🏠 Welkom bij Putsie Studios!")
-    st.write("Gebruik het menu aan de zijkant om te navigeren. Veel succes en plezier met leren!")
+    with st.container(border=True):
+        st.title("🏠 Welkom bij Putsie Studios!")
+        st.write("Gebruik het menu aan de zijkant om te navigeren. Veel succes en plezier met leren! 🚀")
