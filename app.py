@@ -6,7 +6,7 @@ from huggingface_hub import InferenceClient
 
 # --- 1. CONFIGURATIE ---
 DB_FILE = "database.json"
-API_TOKEN = "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" # Jouw token
+API_TOKEN = "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" # Jouw token
 client = InferenceClient(api_key=API_TOKEN)
 
 st.set_page_config(page_title="Putsie Studios", layout="wide")
