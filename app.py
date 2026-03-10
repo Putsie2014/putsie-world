@@ -3,7 +3,7 @@ import json
 import os
 import random
 
-# --- 1. CONFIGURATIE & INITIALISATIE ---
+# --- 1. CONFIGURATIE ---
 DB_FILE = "database.json"
 st.set_page_config(page_title="Putsie Studios", layout="wide")
 
@@ -73,13 +73,16 @@ if st.session_state.page == "Frans":
             st.warning("Voeg minstens 10 woorden toe om de quiz te ontgrendelen!")
         else:
             cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
+            lijst = data["woorden"][cat]
             if st.button("Nieuwe Vraag 🆕"):
-                st.session_state.vraag = random.choice(list(data["woorden"][cat].keys()))
-                st.session_state.answered = False
-            if 'vraag' in st.session_state:
+                if lijst:
+                    st.session_state.vraag = random.choice(list(lijst.keys()))
+                    st.session_state.answered = False
+            
+            if 'vraag' in st.session_state and st.session_state.vraag in lijst:
                 v = st.session_state.vraag
                 with st.form(key="q_form", clear_on_submit=True):
-                    st.write(f"Vertaal: **{data['woorden'][cat][v]}**")
+                    st.write(f"Vertaal: **{lijst[v]}**")
                     ant = st.text_input("Antwoord:").lower().strip()
                     if st.form_submit_button("Check ✅"):
                         if not st.session_state.get('answered', False) and ant == v:
@@ -88,6 +91,9 @@ if st.session_state.page == "Frans":
                             st.session_state.answered = True
                             st.success("Correct! +€15"); st.balloons()
                         else: st.error("Fout of al beantwoord.")
+            elif 'vraag' in st.session_state:
+                del st.session_state.vraag
+                st.rerun()
 
     with t2:
         st.write("Voeg toe aan de database:")
@@ -96,9 +102,11 @@ if st.session_state.page == "Frans":
             f_w = st.text_input("Frans:").lower().strip()
             n_w = st.text_input("Nederlands:").lower().strip()
             if st.form_submit_button("Opslaan 💾"):
-                data["woorden"][c_t][f_w] = n_w
-                sla_db_op(db)
-                st.success("Toegevoegd!")
+                if f_w and n_w:
+                    data["woorden"][c_t][f_w] = n_w
+                    sla_db_op(db)
+                    st.success("Toegevoegd!")
+                    st.rerun()
 
 elif st.session_state.page == "Strips": st.title("📖 Putsie Strips")
 elif st.session_state.page == "Games": st.title("🕹️ Putsie Games")
