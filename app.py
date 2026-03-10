@@ -88,7 +88,6 @@ if st.session_state.page == "Frans":
             if 'vraag' in st.session_state:
                 v = st.session_state.vraag
                 lijst = data["woorden"][cat]
-                
                 if v in lijst:
                     with st.form(key="q_form", clear_on_submit=True):
                         if cat == "woorden": 
@@ -97,7 +96,6 @@ if st.session_state.page == "Frans":
                         else: 
                             st.write(f"Vervoeg **{v}** ({lijst[v]['ned']}) - **{st.session_state.vorm}**:")
                             juist = lijst[v][st.session_state.vorm]
-                        
                         ant = st.text_input("Antwoord:").lower().strip()
                         if st.form_submit_button("Check ✅"):
                             if ant == juist:
@@ -106,9 +104,6 @@ if st.session_state.page == "Frans":
                                 sla_db_op(db)
                                 st.success("Correct! +€15"); st.balloons()
                             else: st.error(f"Fout! Het was: {juist}")
-                else:
-                    st.warning("De geselecteerde vraag bestaat niet meer.")
-                    del st.session_state.vraag
 
     with t2:
         keuze = st.radio("Wat voeg je toe?", ["Woord", "Werkwoord"])
@@ -156,63 +151,16 @@ if st.session_state.page == "Admin":
         db = laad_db()
         alle_spelers = list(db["users"].keys())
         te_beheren = st.selectbox("Selecteer speler:", alle_spelers)
-        
         if te_beheren:
             gebruiker_data = db["users"][te_beheren]
             st.write(f"### Instellingen voor: **{te_beheren.capitalize()}**")
-            
-            # Saldo aanpassen
             huidig_geld = gebruiker_data.get("geld", 0)
             nieuw_geld = st.number_input("Pas saldo aan:", value=huidig_geld, step=1)
             if st.button("Sla saldo op"):
                 db["users"][te_beheren]["geld"] = int(nieuw_geld)
                 sla_db_op(db); st.rerun()
             
-            st.write("---")
-            # Overzicht Woordenlijst
-            st.subheader(f"📖 Woordenlijst van {te_beheren}")
+            st.write("### Overzicht Woordenlijsten")
             col1, col2 = st.columns(2)
-            with col1:
-                st.write("**Woorden:**")
-                st.json(gebruiker_data["woorden"]["woorden"])
-            with col2:
-                st.write("**Werkwoorden:**")
-                st.json(gebruiker_data["woorden"]["werkwoorden"])
-            
-            st.write("---")
-            # Acties
-            if st.button("Verwijder deze speler"):
-                del db["users"][te_beheren]
-                sla_db_op(db); st.success("Speler verwijderd!"); st.rerun()
-
-# --- NIEUWE PAGINA: KLASLOKAAL ---
-if st.session_state.page == "Klas":
-    st.title("🏫 Putsie Klaslokaal")
-    
-    # Check of de gebruiker leerkracht is (of admin)
-    if user in ["leerkracht", "admin"]:
-        tab1, tab2 = st.tabs(["Klas beheren", "Taken instellen"])
-        
-        with tab1:
-            klas_naam = st.text_input("Naam nieuwe klas:")
-            if st.button("Maak Klas"):
-                db["klassen"] = db.get("klassen", {})
-                db["klassen"][klas_naam] = {"leerlingen": [], "taken": []}
-                sla_db_op(db); st.rerun()
-                
-        with tab2:
-            st.subheader("Taak aanmaken")
-            taak_naam = st.text_input("Naam van de taak:")
-            beloning = st.number_input("Verdienbaar geld:", value=50)
-            if st.button("Taak plaatsen"):
-                # Hier zou je de logica toevoegen om de taak in de klas-database op te slaan
-                st.success(f"Taak '{taak_naam}' geplaatst!")
-                
-    else:
-        st.write("### Jouw Taken")
-        # Hier toon je de taken die de leerkracht voor deze leerling heeft klaargezet
-        st.info("Geen taken gevonden. Vraag je leerkracht om hulp!")
-
-# --- SIDEBAR UPDATEN ---
-# Voeg deze regel toe in je sidebar menu
-if st.button("🏫 Klaslokaal", use_container_width=True): st.session_state.page = "Klas"
+            with col1: st.json(gebruiker_data["woorden"]["woorden"])
+            with col2: st.json(gebruiker_data["woorden"]["werkwoorden"])
