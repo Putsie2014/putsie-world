@@ -15,7 +15,6 @@ def init_db():
             json.dump({"users": {}, "klassen": {}}, f)
 
 def laad_db():
-    if not os.path.exists(DB_FILE): init_db()
     try:
         with open(DB_FILE, "r", encoding="utf-8") as f:
             db = json.load(f)
@@ -26,26 +25,42 @@ def laad_db():
 def sla_db_op(db):
     with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db, f, indent=4)
 
-# --- 2. LOGIN ---
+init_db()
+
+# --- 2. LOGIN & REGISTRATIE ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
+
 if not st.session_state.ingelogd:
-    st.title("🌍 Putsie Studios - Login")
+    st.title("🌍 Putsie Studios - Login/Registratie")
     db = laad_db()
-    u = st.text_input("Naam").lower().strip()
-    p = st.text_input("Wachtwoord", type="password")
-    if st.button("Log in"):
-        if u in db["users"] and db["users"][u]["password"] == p:
-            st.session_state.ingelogd = True; st.session_state.username = u; st.rerun()
-        else: st.error("Fout!")
+    tab1, tab2 = st.tabs(["Inloggen", "Account aanmaken"])
+    
+    with tab1:
+        u = st.text_input("Naam", key="l_u").lower().strip()
+        p = st.text_input("Wachtwoord", type="password", key="l_p")
+        if st.button("Log in"):
+            if u in db["users"] and db["users"][u]["password"] == p:
+                st.session_state.ingelogd = True; st.session_state.username = u; st.rerun()
+            else: st.error("Fout!")
+            
+    with tab2:
+        ru = st.text_input("Kies Naam", key="r_u").lower().strip()
+        rp = st.text_input("Kies Wachtwoord", type="password", key="r_p")
+        if st.button("Maak Account"):
+            if ru and ru not in db["users"]:
+                db["users"][ru] = {"password": rp, "geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None}
+                sla_db_op(db); st.success("Account aangemaakt!"); st.rerun()
     st.stop()
 
-# --- 3. DATA & ZIJKANT ---
+# --- 3. SIDEBAR ---
 db = laad_db()
 user = st.session_state.username
 data = db["users"].get(user, {"geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None})
 
 with st.sidebar:
+    st.title(f"👤 {user.capitalize()}")
     st.metric("Saldo", f"€{data.get('geld', 0)}")
+    st.write("---")
     if st.button("🏠 Home"): st.session_state.page = "Home"
     if st.button("🇫🇷 Frans & Werkwoorden"): st.session_state.page = "Frans"
     if st.button("🏫 Klaslokaal"): st.session_state.page = "Klas"
@@ -76,16 +91,15 @@ if page == "Frans":
 elif page == "Klas":
     st.title("🏫 Putsie Klaslokaal")
     if user.lower() in LEERKRACHTEN:
-        naam = st.text_input("Naam nieuwe klas:"); 
+        naam = st.text_input("Naam nieuwe klas:")
         if st.button("Genereer Klas"):
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             db["klassen"][code] = {"naam": naam, "docent": user, "taken": []}; sla_db_op(db); st.rerun()
         for code, info in db["klassen"].items():
             if info["docent"] == user:
                 with st.expander(f"Klas: {info['naam']} (Code: {code})"):
-                    t = st.text_input("Taak:", key=f"t_{code}")
-                    b = st.number_input("Bedrag:", value=20, key=f"b_{code}")
-                    if st.button("Plaats", key=f"p_{code}"):
+                    t = st.text_input("Taak:", key=f"t_{code}"); b = st.number_input("Bedrag:", value=20, key=f"b_{code}")
+                    if st.button("Plaats Taak", key=f"p_{code}"):
                         info["taken"].append({"taak": t, "beloning": b}); sla_db_op(db); st.rerun()
     else:
         if not data.get("klas_id"):
@@ -94,9 +108,10 @@ elif page == "Klas":
                 data["klas_id"] = c; db["users"][user] = data; sla_db_op(db); st.rerun()
         else:
             klas = db["klassen"].get(data["klas_id"], {})
+            st.subheader(f"Klas: {klas.get('naam', 'Onbekend')}")
             for i, taak in enumerate(klas.get("taken", [])):
                 st.write(f"✅ {taak['taak']} (Beloning: €{taak['beloning']})")
-                if st.button(f"Voltooid {i}"):
+                if st.button(f"Taak Voltooid! {i}"):
                     data["geld"] += taak['beloning']; db["users"][user] = data; sla_db_op(db); st.rerun()
 
 else:
