@@ -50,12 +50,11 @@ if not st.session_state.ingelogd:
                 sla_db_op(db); st.success("Account gemaakt!"); st.rerun()
     st.stop()
 
-# --- 3. GEDEELDE DATA ---
+# --- 3. DATA & ZIJKANT ---
 db = laad_db()
 user = st.session_state.username
 data = db["users"].get(user, {"geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None})
 
-# --- 4. ZIJKANT ---
 with st.sidebar:
     st.metric("Saldo", f"€{data.get('geld', 0)}")
     if st.button("🏠 Home"): st.session_state.page = "Home"
@@ -63,58 +62,61 @@ with st.sidebar:
     if st.button("🏫 Klaslokaal"): st.session_state.page = "Klas"
     if st.button("Uitloggen"): st.session_state.clear(); st.rerun()
 
-# --- PAGINA LOGICA: KLAS (Quiz-integratie toegevoegd) ---
+# --- 4. PAGINA LOGICA ---
+page = st.session_state.get("page", "Home")
+
+if page == "Frans":
+    st.title("🎓 Frans & Werkwoorden")
+    t1, t2 = st.tabs(["🎯 Quiz", "➕ Toevoegen"])
+    with t1:
+        cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
+        if st.button("Nieuwe Vraag"):
+            st.session_state.vraag = random.choice(list(data["woorden"][cat].keys()))
+            st.rerun()
+        if 'vraag' in st.session_state:
+            v = st.session_state.vraag
+            ans = st.text_input(f"Vertaal: {v}")
+            if st.button("Check"):
+                if ans.lower() == data["woorden"][cat][v].lower():
+                    data["geld"] += 10; db["users"][user] = data; sla_db_op(db); st.success("Correct! +€10")
+    with t2:
+        f = st.text_input("Frans"); n = st.text_input("Nederlands")
+        if st.button("Opslaan"):
+            data["woorden"]["woorden"][f] = n; db["users"][user] = data; sla_db_op(db); st.rerun()
+
 elif page == "Klas":
     st.title("🏫 Putsie Klaslokaal")
-    
-    # LEERKRACHT GEDEELTE
     if user.lower() in LEERKRACHTEN:
-        # ... (je bestaande leerkracht code) ...
-        pass 
-        
-    # LEERLING GEDEELTE
+        naam = st.text_input("Naam nieuwe klas:")
+        if st.button("Genereer Klas"):
+            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+            db["klassen"][code] = {"naam": naam, "docent": user, "taken": []}; sla_db_op(db); st.rerun()
+        for code, info in db["klassen"].items():
+            if info["docent"] == user:
+                with st.expander(f"Klas: {info['naam']} (Code: {code})"):
+                    t = st.text_input("Taak:", key=f"t_{code}"); b = st.number_input("Bedrag:", value=20, key=f"b_{code}")
+                    if st.button("Plaats", key=f"p_{code}"):
+                        info["taken"].append({"taak": t, "beloning": b}); sla_db_op(db); st.rerun()
     else:
         if not data.get("klas_id"):
-            # ... (je bestaande join code) ...
             c = st.text_input("Vul klascode in:").upper()
             if st.button("Deelnemen"):
                 if c in db["klassen"]:
                     data["klas_id"] = c; db["users"][user] = data; sla_db_op(db); st.rerun()
         else:
-            klas_id = data.get("klas_id")
-            klas = db["klassen"].get(klas_id, {})
-            st.subheader(f"Jouw Klas: {klas.get('naam', 'Niet gevonden')}")
-            
-            # Taken lijst
+            klas = db["klassen"].get(data["klas_id"], {})
+            st.subheader(f"Klas: {klas.get('naam')}")
             for i, taak in enumerate(klas.get("taken", [])):
-                if st.button(f"Start Taak: {taak['taak']}", key=f"start_{i}"):
-                    st.session_state.actieve_taak = i
-                    st.rerun()
-            
-            # QUIZ LOGICA VOOR TAAK
+                if st.button(f"Start: {taak['taak']} (+€{taak['beloning']})", key=f"start_{i}"):
+                    st.session_state.actieve_taak = taak
             if 'actieve_taak' in st.session_state:
-                taak_idx = st.session_state.actieve_taak
-                taak = klas["taken"][taak_idx]
-                
-                st.write(f"---")
-                st.subheader(f"Quiz voor: {taak['taak']}")
-                
-                # Pak een random woord uit de eigen woordenlijst van de gebruiker
-                woorden_lijst = list(data["woorden"]["woorden"].keys())
-                if woorden_lijst:
-                    vraag = random.choice(woorden_lijst)
-                    antwoord = st.text_input(f"Vertaal: {vraag}")
-                    
-                    if st.button("Controleer antwoord"):
-                        if antwoord.lower() == data["woorden"]["woorden"][vraag].lower():
-                            # Taak gelukt! Geld toevoegen
-                            data["geld"] += taak['beloning']
-                            db["users"][user] = data
-                            sla_db_op(db)
-                            st.success(f"Goed gedaan! +€{taak['beloning']}")
-                            del st.session_state.actieve_taak
-                            st.rerun()
-                        else:
+                t = st.session_state.actieve_taak
+                ant = st.text_input(f"Vertaal iets uit je woordenlijst voor taak: {t['taak']}")
+                if st.button("Voltooien"):
+                    data["geld"] += t['beloning']; db["users"][user] = data; sla_db_op(db); del st.session_state.actieve_taak; st.rerun()
+
+else:
+    st.title("🏠 Welkom bij Putsie Studios!")
                             st.error("Niet goed, probeer het nog eens!")
                 else:
                     st.warning("Voeg eerst woorden toe aan je woordenlijst!")
