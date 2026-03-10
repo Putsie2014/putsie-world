@@ -98,28 +98,18 @@ if st.session_state.page == "Klas":
                         info["taken"].append({"taak": nieuwe_taak, "beloning": beloning})
                         sla_db_op(db); st.rerun()
     
-    # LEERLING PANEEL
-    else:
-        if not data.get("klas_id"):
-            st.warning("Je zit nog niet in een klaslokaal.")
-            code_input = st.text_input("Vul hier je klascode in:").upper()
-            if st.button("Deelnemen"):
-                if code_input in db["klassen"]:
-                    db["klassen"][code_input]["leerlingen"].append(user)
-                    data["klas_id"] = code_input
-                    db["users"][user] = data
-                    sla_db_op(db); st.rerun()
-                else: st.error("Code niet gevonden!")
-        else:
-            klas = db["klassen"].get(data["klas_id"], {})
-            st.success(f"Je zit in klas: {klas.get('naam', 'Onbekend')}")
-            st.subheader("Jouw Taken")
-            for i, taak in enumerate(klas.get("taken", [])):
-                st.write(f"✅ **{taak['taak']}** - Beloning: €{taak['beloning']}")
-                if st.button(f"Taak Voltooid! {i}"):
-                    data["geld"] += taak['beloning']
-                    db["users"][user] = data
-                    sla_db_op(db); st.rerun()
+   # Dit is het stukje voor de leerling:
+if not data.get("klas_id"):
+    st.warning("Je zit nog niet in een klaslokaal.")
+    code_input = st.text_input("Vul hier je klascode in:").upper() # Hier vul je de code in
+    if st.button("Deelnemen"):
+        if code_input in db["klassen"]: # Hier checkt hij: "Bestaat deze code?"
+            db["klassen"][code_input]["leerlingen"].append(user) # Voegt jou toe
+            data["klas_id"] = code_input # Onthoudt bij welke klas je hoort
+            db["users"][user] = data
+            sla_db_op(db); st.rerun()
+        else: 
+            st.error("Code niet gevonden!") # Foutmelding als de code niet bestaat
 
 elif st.session_state.page == "Frans":
     st.title("🎓 Frans & Werkwoorden")
