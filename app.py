@@ -2,26 +2,30 @@ import streamlit as st
 import json
 import os
 import random
+import string
 
-# --- 1. CONFIGURATIE ---
-# --- 1. AANPASSING IN INIT_DB (Vervang je huidige functie) ---
+# --- 1. CONFIGURATIE (MOET BOVENAAN!) ---
+DB_FILE = "database.json" 
+LEERKRACHTEN = ["elliot", "annelies", "admin"]
+
+# --- 2. FUNCTIES ---
 def init_db():
+    # Nu kan de functie DB_FILE vinden omdat deze hierboven is gedefinieerd
     if not os.path.exists(DB_FILE):
         with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump({"users": {}, "klassen": {}}, f) # Klassen toegevoegd
+            json.dump({"users": {}, "klassen": {}}, f)
+
 def laad_db():
     try:
         with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-    except: return {"users": {}}
+    except: return {"users": {}, "klassen": {}}
 
 def sla_db_op(db):
     with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db, f, indent=4)
 
-init_db()
-
-if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
-if 'page' not in st.session_state: st.session_state.page = "Home"
-
+# --- 3. APP INITIALISATIE ---
+st.set_page_config(page_title="Putsie Studios", layout="wide")
+init_db() # Nu werkt dit wel!
 # --- 2. LOGIN ---
 if not st.session_state.ingelogd:
     st.title("🌍 Putsie Studios - Login")
