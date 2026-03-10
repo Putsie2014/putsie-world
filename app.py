@@ -7,10 +7,8 @@ import random
 DB_FILE = "database.json"
 st.set_page_config(page_title="Putsie Studios", layout="wide")
 
-# --- DATABASE FUNCTIES ---
 def laad_db():
-    if not os.path.exists(DB_FILE): 
-        return {"users": {}}
+    if not os.path.exists(DB_FILE): return {"users": {}}
     with open(DB_FILE, "r", encoding="utf-8") as f: 
         return json.load(f)
 
@@ -18,7 +16,7 @@ def sla_db_op(db):
     with open(DB_FILE, "w", encoding="utf-8") as f: 
         json.dump(db, f, indent=4)
 
-# --- LOGIN LOGICA ---
+# --- LOGIN & SESSIE ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 if 'page' not in st.session_state: st.session_state.page = "Home"
 
@@ -29,6 +27,7 @@ if not st.session_state.ingelogd:
     if st.button("Inloggen"):
         db = laad_db()
         if u not in db["users"]:
+            # Nieuwe structuur met subcategorieën
             db["users"][u] = {"password": p, "geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}}
             sla_db_op(db)
         if db["users"][u]["password"] == p:
@@ -37,29 +36,29 @@ if not st.session_state.ingelogd:
             st.rerun()
     st.stop()
 
-# --- DATA LADEN ---
+# --- DATA LADEN & REPAREREN ---
 db = laad_db()
 u = st.session_state.username
 data = db["users"][u]
 
-# --- ZIJKANT (VOLLEDIG HERSTELD) ---
+# REPARATIE: Zorg dat de woorden-structuur altijd klopt
+if "woorden" not in data: data["woorden"] = {"werkwoorden": {}, "woorden": {}}
+if "werkwoorden" not in data["woorden"]: data["woorden"]["werkwoorden"] = {}
+if "woorden" not in data["woorden"]: data["woorden"]["woorden"] = {}
+
+# --- ZIJKANT ---
 with st.sidebar:
     st.title(f"👤 {u.capitalize()}")
     st.write(f"💰 {data.get('geld', 0)}")
     st.write("---")
-    
     st.write("### 🎓 Putsie Education")
     if st.button("🇫🇷 Frans", use_container_width=True): st.session_state.page = "Frans"
-    
     st.write("### 📖 Putsie Strips")
     if st.button("📚 Strips", use_container_width=True): st.session_state.page = "Strips"
-    
     st.write("### 🎮 Putsie Games")
     if st.button("🕹️ Games", use_container_width=True): st.session_state.page = "Games"
-    
     st.write("### 🎵 Putsie Music")
     if st.button("🎧 Music", use_container_width=True): st.session_state.page = "Music"
-    
     st.write("---")
     if st.button("Uitloggen", use_container_width=True): st.session_state.clear(); st.rerun()
 
@@ -93,11 +92,5 @@ if st.session_state.page == "Frans":
             sla_db_op(db)
             st.success(f"Toegevoegd aan {cat_toe}!")
 
-elif st.session_state.page == "Strips":
-    st.title("📖 Putsie Strips")
-elif st.session_state.page == "Games":
-    st.title("🕹️ Putsie Games")
-elif st.session_state.page == "Music":
-    st.title("🎵 Putsie Music")
 else:
-    st.title("Welkom bij Putsie Studios!")
+    st.title(f"Welkom bij Putsie Studios: {st.session_state.page}")
