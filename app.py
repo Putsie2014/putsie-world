@@ -63,41 +63,58 @@ with st.sidebar:
     if st.button("🏫 Klaslokaal"): st.session_state.page = "Klas"
     if st.button("Uitloggen"): st.session_state.clear(); st.rerun()
 
-# --- 5. PAGINA LOGICA ---
-page = st.session_state.get("page", "Home")
-
-if page == "Klas":
+# --- PAGINA LOGICA: KLAS (Quiz-integratie toegevoegd) ---
+elif page == "Klas":
     st.title("🏫 Putsie Klaslokaal")
-    # Veilige check voor leerkrachten
+    
+    # LEERKRACHT GEDEELTE
     if user.lower() in LEERKRACHTEN:
-        naam = st.text_input("Naam nieuwe klas:")
-        if st.button("Genereer Klas"):
-            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-            db["klassen"][code] = {"naam": naam, "docent": user, "taken": []}; sla_db_op(db); st.rerun()
-        for code, info in db["klassen"].items():
-            if info["docent"] == user:
-                with st.expander(f"Klas: {info['naam']} (Code: {code})"):
-                    t = st.text_input("Taak:", key=f"t_{code}"); b = st.number_input("Bedrag:", value=20, key=f"b_{code}")
-                    if st.button("Plaats Taak", key=f"p_{code}"):
-                        info["taken"].append({"taak": t, "beloning": b}); sla_db_op(db); st.rerun()
+        # ... (je bestaande leerkracht code) ...
+        pass 
+        
+    # LEERLING GEDEELTE
     else:
-        # Leerling logica
         if not data.get("klas_id"):
+            # ... (je bestaande join code) ...
             c = st.text_input("Vul klascode in:").upper()
             if st.button("Deelnemen"):
                 if c in db["klassen"]:
                     data["klas_id"] = c; db["users"][user] = data; sla_db_op(db); st.rerun()
-                else: st.error("Code bestaat niet!")
         else:
-            klas = db["klassen"].get(data["klas_id"], {})
-            st.write(f"Klas: {klas.get('naam', 'Niet gevonden')}")
+            klas_id = data.get("klas_id")
+            klas = db["klassen"].get(klas_id, {})
+            st.subheader(f"Jouw Klas: {klas.get('naam', 'Niet gevonden')}")
+            
+            # Taken lijst
             for i, taak in enumerate(klas.get("taken", [])):
-                if st.button(f"Voltooid: {taak['taak']} (+€{taak['beloning']})", key=f"t_{i}"):
-                    data["geld"] += taak['beloning']; db["users"][user] = data; sla_db_op(db); st.rerun()
-
-elif page == "Frans":
-    st.title("🎓 Frans & Werkwoorden")
-    # (Je quiz logica hier...)
-    st.write("Frans sectie actief")
-else:
-    st.title("🏠 Welkom bij Putsie Studios!")
+                if st.button(f"Start Taak: {taak['taak']}", key=f"start_{i}"):
+                    st.session_state.actieve_taak = i
+                    st.rerun()
+            
+            # QUIZ LOGICA VOOR TAAK
+            if 'actieve_taak' in st.session_state:
+                taak_idx = st.session_state.actieve_taak
+                taak = klas["taken"][taak_idx]
+                
+                st.write(f"---")
+                st.subheader(f"Quiz voor: {taak['taak']}")
+                
+                # Pak een random woord uit de eigen woordenlijst van de gebruiker
+                woorden_lijst = list(data["woorden"]["woorden"].keys())
+                if woorden_lijst:
+                    vraag = random.choice(woorden_lijst)
+                    antwoord = st.text_input(f"Vertaal: {vraag}")
+                    
+                    if st.button("Controleer antwoord"):
+                        if antwoord.lower() == data["woorden"]["woorden"][vraag].lower():
+                            # Taak gelukt! Geld toevoegen
+                            data["geld"] += taak['beloning']
+                            db["users"][user] = data
+                            sla_db_op(db)
+                            st.success(f"Goed gedaan! +€{taak['beloning']}")
+                            del st.session_state.actieve_taak
+                            st.rerun()
+                        else:
+                            st.error("Niet goed, probeer het nog eens!")
+                else:
+                    st.warning("Voeg eerst woorden toe aan je woordenlijst!")
