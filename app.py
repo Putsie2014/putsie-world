@@ -5,7 +5,7 @@ from openai import OpenAI
 
 # --- CONFIGURATIE ---
 SITE_TITLE = "(indev) Putsie EDUCATION 🎓"
-client = OpenAI(api_key="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")
+client = OpenAI(api_key="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")
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
 
