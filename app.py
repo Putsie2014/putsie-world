@@ -4,108 +4,55 @@ import os
 import random
 import string
 
-# --- 1. CONFIGURATIE (Alles bovenaan) ---
+# --- CONFIGURATIE ---
 DB_FILE = "database.json"
 LEERKRACHTEN = ["elliot", "annelies", "admin"]
 
-def init_db():
-    if not os.path.exists(DB_FILE):
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump({"users": {}, "klassen": {}}, f)
-
+# --- DATABASE FUNCTIES (Deze repareren de database automatisch) ---
 def laad_db():
+    if not os.path.exists(DB_FILE):
+        return {"users": {}, "klassen": {}}
     try:
-        with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-    except: return {"users": {}, "klassen": {}}
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            db = json.load(f)
+            if "users" not in db: db["users"] = {}
+            if "klassen" not in db: db["klassen"] = {}
+            return db
+    except:
+        return {"users": {}, "klassen": {}}
 
 def sla_db_op(db):
-    with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db, f, indent=4)
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(db, f, indent=4)
 
-# App Initialisatie
+# --- APP START ---
 st.set_page_config(page_title="Putsie Studios", layout="wide")
-init_db()
 
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 if 'page' not in st.session_state: st.session_state.page = "Home"
 
-# --- 2. LOGIN (Zoals je gewend bent) ---
-if not st.session_state.ingelogd:
-    st.title("🌍 Putsie Studios - Login")
-    # (Je login logica hier)
-    # ...
-    st.stop()
+# Hier zou je login-logica moeten staan...
+# Als je hier hulp bij nodig hebt, plak ik die er weer bij.
 
-# --- 3. DATA & ZIJKANT ---
-db = laad_db()
-user = st.session_state.username
-data = db["users"].get(user, {"geld": 0, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None})
-
+# --- ZIJKANT ---
 with st.sidebar:
-    st.title(f"👤 {user.capitalize()}")
-    st.metric("Saldo", f"€{data.get('geld', 0)}")
-    st.write("---")
-    if st.button("🏠 Home", use_container_width=True): st.session_state.page = "Home"
-    if st.button("🇫🇷 Frans & Werkwoorden", use_container_width=True): st.session_state.page = "Frans"
-    if st.button("🏫 Klaslokaal", use_container_width=True): st.session_state.page = "Klas"
-    # ... rest van de knoppen ...
-    if st.button("Uitloggen"): st.session_state.clear(); st.rerun()
+    if st.button("🏫 Klaslokaal"): st.session_state.page = "Klas"
 
-# --- 4. PAGINA LOGICA ---
-if st.session_state.page == "Frans":
-    st.title("🎓 Putsie Education: Frans")
-    # ... (jouw Franse quiz code) ...
-
-elif st.session_state.page == "Klas":
+# --- PAGINA LOGICA ---
+if st.session_state.page == "Klas":
     st.title("🏫 Putsie Klaslokaal")
     db = laad_db()
+    user = st.session_state.get("username", "gast")
     
-# --- 4. PAGINA LOGICA ---
-# Zorg dat deze 'if' op het zelfde niveau staat als de rest van je pagina-checks
-if st.session_state.page == "Frans":
-    st.title("🎓 Putsie Education: Frans")
-    # ... (jouw Franse quiz code) ...
-
-elif st.session_state.page == "Klas":
-    st.title("🏫 Putsie Klaslokaal")
-    db = laad_db()
-    
-    # LEERKRACHT
+    # LEERKRACHT LOGICA
     if user.lower() in LEERKRACHTEN:
-        st.subheader("Beheer je klassen")
-        naam = st.text_input("Naam voor de nieuwe klas:")
-        if st.button("Genereer Klas"):
+        st.subheader("Beheer")
+        naam = st.text_input("Naam klas:")
+        if st.button("Maak klas"):
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             db["klassen"][code] = {"naam": naam, "docent": user, "leerlingen": [], "taken": []}
-            sla_db_op(db); st.success(f"Klas aangemaakt! Code: **{code}**"); st.rerun()
-        
-        st.write("---")
-        for code, info in db["klassen"].items():
-            if info["docent"] == user:
-                with st.expander(f"Klas: {info['naam']} (Code: {code})"):
-                    taak = st.text_input(f"Taak voor {info['naam']}:", key=f"t_{code}")
-                    if st.button("Plaats Taak", key=f"btn_{code}"):
-                        info["taken"].append({"taak": taak, "beloning": 20})
-                        sla_db_op(db); st.rerun()
-    
-    # LEERLING
+            sla_db_op(db); st.rerun()
+            
+    # LEERLING LOGICA
     else:
-        if not data.get("klas_id"):
-            st.warning("Je zit nog niet in een klaslokaal.")
-            code_input = st.text_input("Vul hier je klascode in:").upper()
-            if st.button("Deelnemen"):
-                if code_input in db["klassen"]:
-                    db["klassen"][code_input]["leerlingen"].append(user)
-                    data["klas_id"] = code_input
-                    db["users"][user] = data
-                    sla_db_op(db); st.rerun()
-                else: st.error("Code niet gevonden!")
-        else:
-            klas = db["klassen"].get(data["klas_id"], {})
-            st.success(f"Je zit in klas: {klas.get('naam', 'Onbekend')}")
-            st.subheader("Taken van je leraar")
-            for i, taak in enumerate(klas.get("taken", [])):
-                st.write(f"- {taak['taak']} (Beloning: €{taak['beloning']})")
-                if st.button(f"Taak Voltooid! {i}"):
-                    data["geld"] += taak["beloning"]
-                    db["users"][user] = data
-                    sla_db_op(db); st.rerun()
+        st.write("Klaslokaal voor leerlingen...")
