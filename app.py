@@ -7,34 +7,42 @@ from datetime import datetime
 
 # --- 1. CONFIGURATIE & ULTRA STYLING ---
 DB_FILE = "database.json"
+APP_FILE = "app.py" 
 LEERKRACHTEN = ["elliot", "annelies", "admin"]
-SUPER_ADMIN = "elliot"  # Elliot heeft alle macht
-st.set_page_config(page_title="Putsie Studios 7.0", page_icon="👑", layout="wide")
+SUPER_ADMIN = "elliot"
+
+# PERMANENTE TITEL INSTELLING
+SITE_TITLE = "(indev) Putsie EDUCATION 🎓"
+
+st.set_page_config(page_title=SITE_TITLE, page_icon="🎓", layout="wide")
 
 def apply_custom_styles():
-    st.markdown("""
+    st.markdown(f"""
     <style>
-        .stApp { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); color: white; }
-        [data-testid="stVerticalBlockBorderWrapper"] { 
+        .stApp {{ background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); color: white; }}
+        [data-testid="stVerticalBlockBorderWrapper"] {{ 
             background: rgba(255, 255, 255, 0.05) !important; 
-            backdrop-filter: blur(15px) !important; 
-            border-radius: 20px !important; 
+            backdrop-filter: blur(15px) !important; border-radius: 20px !important; 
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            padding: 25px !important;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4) !important;
-        }
-        .stButton > button { 
+            padding: 25px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.4) !important;
+        }}
+        .stButton > button {{ 
             border-radius: 12px !important; 
             background: linear-gradient(45deg, #00dbde 0%, #fc00ff 100%) !important;
-            color: white !important; font-weight: 800 !important;
-            transition: 0.4s !important;
-        }
-        .stChatMessage { background: rgba(255,255,255,0.05) !important; border-radius: 15px !important; }
-        .vip-badge { color: #ffcc00; font-weight: bold; text-shadow: 0 0 10px rgba(255,204,0,0.5); }
+            color: white !important; font-weight: 800 !important; transition: 0.4s !important;
+        }}
+        .stTextArea textarea {{ background-color: #1e1e2e !important; color: #00ff00 !important; font-family: 'Courier New', monospace !important; }}
     </style>
     """, unsafe_allow_html=True)
 
 apply_custom_styles()
+
+# --- De rest van je database en login functies blijven hier ---
+
+# Bovenkant van de pagina
+st.title(SITE_TITLE)
+
+# ... (rest van de v8.0 code met de Super Admin functies)
 
 # --- 2. DATABASE FUNCTIES ---
 def laad_db():
