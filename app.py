@@ -4,6 +4,13 @@ import os
 import random
 import string
 
+# VOEG DIT TIJDELIJK TOE OM TE RESETTEN
+# Zodra de app is opgestart, kun je deze regels weer verwijderen!
+def reset_database():
+    with open("database.json", "w", encoding="utf-8") as f:
+        json.dump({"users": {}, "klassen": {}}, f)
+
+# reset_database()  # <--- Haal het hekje (#) hier weg om te activeren
 # --- CONFIGURATIE ---
 DB_FILE = "database.json"
 LEERKRACHTEN = ["elliot", "annelies", "admin"]
