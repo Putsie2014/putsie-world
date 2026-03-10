@@ -126,7 +126,3 @@ elif st.session_state.page == "Frans":
     # (Je quiz code kan hier blijven staan)
 else:
     st.title("🏠 Welkom bij Putsie Studios!")
-elif st.session_state.page == "Home":
-    st.title("🏠 Welkom bij Putsie Studios!")
-else:
-    st.title(f"Pagina: {st.session_state.page}")
