@@ -3,6 +3,7 @@ import json
 import os
 import random
 import string
+from datetime import datetime
 
 # --- 1. CONFIGURATIE & ULTRA STYLING ---
 DB_FILE = "database.json"
@@ -27,14 +28,14 @@ def apply_custom_styles():
             color: white !important; font-weight: 800 !important;
             transition: 0.4s !important;
         }
-        .stButton > button:hover { transform: scale(1.05) !important; box-shadow: 0 0 20px rgba(0, 219, 222, 0.6) !important; }
-        .delete-btn > button { background: linear-gradient(45deg, #ff4b1f 0%, #ff9068 100%) !important; }
+        /* Chat bericht styling */
+        .stChatMessage { background: rgba(255,255,255,0.05) !important; border-radius: 15px !important; margin-bottom: 10px !important; }
     </style>
     """, unsafe_allow_html=True)
 
 apply_custom_styles()
 
-# --- 2. DATABASE ARCHITECTUUR ---
+# --- 2. DATABASE FUNCTIES ---
 def laad_db():
     if not os.path.exists(DB_FILE): return {"users": {}, "klassen": {}}
     try:
@@ -47,7 +48,7 @@ def laad_db():
 def sla_db_op(db):
     with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db, f, indent=4)
 
-# --- 3. TOEGANGSCONTROLE ---
+# --- 3. LOGIN SYSTEEM ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 
 if not st.session_state.ingelogd:
@@ -67,13 +68,12 @@ if not st.session_state.ingelogd:
         if st.button("Account Aanmaken"):
             if ru and rp and ru not in db["users"]:
                 db["users"][ru] = {"password": rp, "geld": 100, "klas_id": None, "voltooide_taken": [], "woorden": {"woorden": {}, "werkwoorden": {}}}
-                sla_db_op(db); st.success("Welkom! Log nu in."); st.balloons()
+                sla_db_op(db); st.success("Account klaar! Log nu in."); st.balloons()
     st.stop()
 
-# --- 4. DATA SYNCHRONISATIE ---
 db = laad_db()
 user = st.session_state.username
-data = db["users"].get(user, {"geld": 0, "woorden": {"woorden": {}, "werkwoorden": {}}})
+data = db["users"].get(user, {"geld": 0})
 
 with st.sidebar:
     st.title(f"👾 {user.capitalize()}")
@@ -82,136 +82,134 @@ with st.sidebar:
     nav = st.radio("NAVIGATIE", ["🏠 Home", "📚 Frans Lab", "🏫 Het Klaslokaal", "🎮 Game Arcade"])
     if st.button("🚪 Log uit"): st.session_state.clear(); st.rerun()
 
-# --- 5. PAGINA'S ---
+# --- 4. PAGINA LOGICA ---
 
 if nav == "🏠 Home":
-    st.title(f"Welkom in de Studio, {user.capitalize()}!")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Geld", f"€{data.get('geld', 0)}")
-    c2.metric("Taken voltooid", len(data.get("voltooide_taken", [])))
-    c3.metric("Status", "Pro Gamer" if data.get("geld", 0) > 1000 else "Starter")
+    st.title(f"Welkom, {user.capitalize()}!")
+    st.write("Klaar om te leren en te verdienen?")
 
 elif nav == "📚 Frans Lab":
     st.title("🧪 Frans Woorden Lab")
-    t1, t2 = st.tabs(["🎯 Quiz Mode", "🧪 Woorden toevoegen"])
+    t1, t2 = st.tabs(["🎯 Quiz", "➕ Toevoegen"])
     with t1:
         cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
         w_dict = data.get("woorden", {}).get(cat, {})
-        if st.button("Nieuwe Vraag 🎲"):
+        if st.button("Nieuwe Vraag"):
             if w_dict: st.session_state.quiz_q = random.choice(list(w_dict.keys()))
-            else: st.warning("Voeg eerst woorden toe!")
         if 'quiz_q' in st.session_state:
             st.subheader(f"Vertaal: {st.session_state.quiz_q}")
             ans = st.text_input("Antwoord:")
-            if st.button("Check ✔️"):
+            if st.button("Check"):
                 if ans.lower().strip() == w_dict[st.session_state.quiz_q].lower().strip():
-                    data["geld"] += 15; db["users"][user] = data; sla_db_op(db)
-                    st.toast("Correct! +€15"); del st.session_state.quiz_q; st.rerun()
-                else: st.error("Niet juist!")
+                    data["geld"] += 15; db["users"][user] = data; sla_db_op(db); st.toast("Lekker! +€15"); del st.session_state.quiz_q; st.rerun()
     with t2:
-        colA, colB = st.columns(2)
-        type_w = colA.radio("Type", ["woorden", "werkwoorden"])
-        f_w = colA.text_input("Frans"); n_w = colB.text_input("Nederlands")
-        if st.button("Opslaan 💾"):
-            if f_w and n_w:
-                data.setdefault("woorden", {}).setdefault(type_w, {})[f_w] = n_w
-                db["users"][user] = data; sla_db_op(db); st.success("Opgeslagen!")
+        tw = st.radio("Type", ["woorden", "werkwoorden"])
+        fw = st.text_input("Frans"); nw = st.text_input("Nederlands")
+        if st.button("Sla op"):
+            data.setdefault("woorden", {}).setdefault(tw, {})[fw] = nw
+            db["users"][user] = data; sla_db_op(db); st.success("Opgeslagen!")
 
 elif nav == "🏫 Het Klaslokaal":
     st.title("🏫 Putsie Klaslokaal")
     
+    # --- ADMIN/TEACHER LOGIC ---
     if user.lower() in LEERKRACHTEN:
         mijn_klas_code = next((c for c, i in db["klassen"].items() if i.get("docent") == user), None)
-        
         if not mijn_klas_code:
-            k_naam = st.text_input("Naam van je nieuwe klas")
+            k_naam = st.text_input("Naam van je klas")
             if st.button("Bouw Klas ✨"):
                 code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-                db["klassen"][code] = {"naam": k_naam, "docent": user, "taken": []}
+                db["klassen"][code] = {"naam": k_naam, "docent": user, "taken": [], "comments": []}
                 sla_db_op(db); st.rerun()
         else:
             klas_info = db["klassen"][mijn_klas_code]
             st.success(f"Beheer: **{klas_info.get('naam')}** | Code: `{mijn_klas_code}`")
             
-            admin_tab1, admin_tab2, admin_tab3 = st.tabs(["📝 Taken Beheren", "👥 Leerlingen", "⚙️ Klasinstellingen"])
+            tab_tk, tab_st, tab_set, tab_chat = st.tabs(["📝 Taken", "👥 Leerlingen", "⚙️ Beheer", "💬 Klas Chat"])
             
-            with admin_tab1:
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.markdown("#### ➕ Nieuwe Taak")
-                    q = st.text_input("Vraag"); a = st.text_input("Antwoord"); g = st.number_input("Beloning", 10, 500, 20)
-                    if st.button("Plaats Taak 🚀"):
-                        klas_info.setdefault("taken", []).append({"vraag": q, "antwoord": a, "beloning": g})
-                        sla_db_op(db); st.rerun()
-                with c2:
-                    st.markdown("#### 📋 Actieve Taken")
-                    for i, t in enumerate(klas_info.get("taken", [])):
-                        st.write(f"{i+1}. {t.get('vraag')} (€{t.get('beloning')})")
-                    if st.button("🗑️ Wis alle taken"):
-                        klas_info["taken"] = []; sla_db_op(db); st.rerun()
-
-            with admin_tab2:
-                st.markdown("#### 👥 Leerlingen in deze klas")
+            with tab_tk:
+                q = st.text_input("Vraag"); a = st.text_input("Antwoord"); g = st.number_input("Geld", 10, 500, 20)
+                if st.button("Plaats Taak"):
+                    klas_info.setdefault("taken", []).append({"vraag": q, "antwoord": a, "beloning": g})
+                    sla_db_op(db); st.rerun()
+                for i, t in enumerate(klas_info.get("taken", [])):
+                    st.write(f"{i+1}. {t.get('vraag')} (€{t.get('beloning')})")
+            
+            with tab_st:
                 leerlingen = [u for u, d in db["users"].items() if d.get("klas_id") == mijn_klas_code]
-                if not leerlingen:
-                    st.info("Er zijn nog geen leerlingen aangemeld.")
-                else:
-                    for l_naam in leerlingen:
-                        col_l1, col_l2 = st.columns([3, 1])
-                        col_l1.write(f"👤 **{l_naam.capitalize()}**")
-                        if col_l2.button(f"Verwijder {l_naam}", key=f"del_{l_naam}"):
-                            db["users"][l_naam]["klas_id"] = None
-                            db["users"][l_naam]["voltooide_taken"] = []
-                            sla_db_op(db); st.toast(f"{l_naam} verwijderd!"); st.rerun()
+                for l in leerlingen:
+                    c1, c2 = st.columns([3, 1])
+                    c1.write(f"👤 {l}")
+                    if c2.button(f"Verwijder", key=f"del_{l}"):
+                        db["users"][l]["klas_id"] = None; sla_db_op(db); st.rerun()
+            
+            with tab_set:
+                n_naam = st.text_input("Nieuwe klasnaam", value=klas_info.get('naam'))
+                if st.button("Naam aanpassen"):
+                    db["klassen"][mijn_klas_code]["naam"] = n_naam; sla_db_op(db); st.rerun()
 
-            with admin_tab3:
-                st.markdown("#### ⚙️ Klas aanpassen")
-                nieuwe_naam = st.text_input("Nieuwe klasnaam", value=klas_info.get('naam'))
-                if st.button("Naam Bijwerken 💾"):
-                    db["klassen"][mijn_klas_code]["naam"] = nieuwe_naam
-                    sla_db_op(db); st.success("Naam gewijzigd!"); st.rerun()
+            with tab_chat:
+                st.subheader("💬 Berichten van de klas")
+                comments = klas_info.get("comments", [])
+                for c in comments:
+                    with st.chat_message(c['user']):
+                        st.write(f"**{c['user'].capitalize()}**: {c['text']} *({c.get('time', '')})*")
                 
-                st.markdown("---")
-                if st.button("❗ VERWIJDER VOLLEDIGE KLAS", type="secondary"):
-                    for l_naam in leerlingen:
-                        db["users"][l_naam]["klas_id"] = None
-                    del db["klassen"][mijn_klas_code]
+                msg = st.chat_input("Typ een mededeling voor de klas...")
+                if msg:
+                    t_str = datetime.now().strftime("%H:%M")
+                    klas_info.setdefault("comments", []).append({"user": user, "text": msg, "time": t_str})
                     sla_db_op(db); st.rerun()
 
-    else: # LEERLING FLOW
+    # --- STUDENT LOGIC ---
+    else:
         if not data.get("klas_id"):
             c_in = st.text_input("Klascode:").upper()
-            if st.button("Deelnemen 🚪"):
+            if st.button("Join"):
                 if c_in in db["klassen"]:
                     data["klas_id"] = c_in; db["users"][user] = data; sla_db_op(db); st.rerun()
-                else: st.error("Code onjuist!")
         else:
-            klas = db["klassen"].get(data["klas_id"], {})
-            st.subheader(f"🎒 Klas: {klas.get('naam', 'Onbekend')}")
-            for i, t in enumerate(klas.get("taken", [])):
-                is_done = i in data.get("voltooide_taken", [])
-                c1, c2 = st.columns([3, 1])
-                c1.write(f"{'✅' if is_done else '📝'} {t.get('vraag')}")
-                if not is_done and c2.button("Start", key=f"st_{i}"):
-                    st.session_state.active_task = {"idx": i, "data": t}
+            klas_id = data["klas_id"]
+            klas = db["klassen"].get(klas_id, {})
+            st.header(f"Klas: {klas.get('naam')}")
             
-            if 'active_task' in st.session_state:
-                at = st.session_state.active_task
-                ans = st.text_input(f"Antwoord op: {at['data'].get('vraag')}")
-                if st.button("Indienen ✔️"):
+            # Taken Sectie
+            st.subheader("📋 Taken")
+            for i, t in enumerate(klas.get("taken", [])):
+                done = i in data.get("voltooide_taken", [])
+                if not done:
+                    if st.button(f"▶️ {t.get('vraag')} (€{t.get('beloning')})", key=f"stud_t_{i}"):
+                        st.session_state.active_t = {"idx": i, "data": t}
+            
+            if 'active_t' in st.session_state:
+                at = st.session_state.active_t
+                ans = st.text_input(f"Antwoord op {at['data'].get('vraag')}:")
+                if st.button("Lever in"):
                     if ans.lower().strip() == at['data'].get('antwoord', '').lower().strip():
                         data["geld"] += at['data'].get('beloning', 0)
                         data.setdefault("voltooide_taken", []).append(at['idx'])
-                        db["users"][user] = data; sla_db_op(db); del st.session_state.active_task; st.balloons(); st.rerun()
-                    else: st.error("Fout!")
+                        db["users"][user] = data; sla_db_op(db); del st.session_state.active_t; st.balloons(); st.rerun()
+            
+            # COMMENT SECTION VOOR LEERLINGEN
+            st.markdown("---")
+            st.subheader("💬 Klas Chat")
+            comments = klas.get("comments", [])
+            
+            # Laat de laatste 10 berichten zien
+            for c in comments[-10:]:
+                with st.chat_message(c['user']):
+                    st.write(f"**{c['user'].capitalize()}**: {c['text']} *({c.get('time', '')})*")
+            
+            new_msg = st.chat_input("Deel iets met je klasgenoten...")
+            if new_msg:
+                t_str = datetime.now().strftime("%H:%M")
+                db["klassen"][klas_id].setdefault("comments", []).append({"user": user, "text": new_msg, "time": t_str})
+                sla_db_op(db); st.rerun()
 
 elif nav == "🎮 Game Arcade":
     st.title("👾 Arcade")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Alien Shooter 🛸"):
-            if random.random() > 0.5: data["geld"] += 2; sla_db_op(db); st.toast("RAAK!")
-            else: st.toast("MIS!")
+    if st.button("Alien Shot! 🛸"):
+        if random.random() > 0.5: data["geld"] += 2; sla_db_op(db); st.toast("RAAK!")
     with c2:
         st.markdown('<div style="height:40px; width:40px; background:orange; border-radius:50%; animation: bounce 0.4s infinite alternate;"></div><style>@keyframes bounce { from {margin-top:0px;} to {margin-top:40px;} }</style>', unsafe_allow_html=True)
         if st.button("Collect Energy 🏀"): data["geld"] += 1; sla_db_op(db); st.toast("Power up!")
