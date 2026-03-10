@@ -52,11 +52,11 @@ if not st.session_state.ingelogd:
 # --- 3. DATA & ZIJKANT ---
 db = laad_db()
 user = st.session_state.username
-data = db["users"][user]
+data = db["users"].get(user, {"geld": 0, "woorden": {"werkwoorden": {}, "woorden": {}}})
 
 with st.sidebar:
     st.title(f"👤 {user.capitalize()}")
-    st.metric("Saldo", f"€{data['geld']}")
+    st.metric("Saldo", f"€{data.get('geld', 0)}")
     st.write("---")
     if st.button("🏠 Home", use_container_width=True): st.session_state.page = "Home"
     if st.button("🇫🇷 Frans & Werkwoorden", use_container_width=True): st.session_state.page = "Frans"
@@ -77,29 +77,39 @@ if st.session_state.page == "Frans":
         else:
             cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
             if st.button("Nieuwe Vraag 🆕"):
-                if cat == "woorden": st.session_state.vraag = random.choice(list(data["woorden"]["woorden"].keys()))
+                if cat == "woorden": 
+                    st.session_state.vraag = random.choice(list(data["woorden"]["woorden"].keys()))
                 else: 
                     st.session_state.vraag = random.choice(list(data["woorden"]["werkwoorden"].keys()))
                     st.session_state.vorm = random.choice(["je", "tu", "il", "nous", "vous", "ils"])
                 st.session_state.answered = False
+                st.rerun()
             
+            # DE FIX: Check of de vraag nog bestaat in de huidige database
             if 'vraag' in st.session_state:
                 v = st.session_state.vraag
-                with st.form(key="q_form", clear_on_submit=True):
-                    if cat == "woorden": 
-                        st.write(f"Vertaal: **{data['woorden']['woorden'][v]}**")
-                        juist = v
-                    else: 
-                        st.write(f"Vervoeg **{v}** ({data['woorden']['werkwoorden'][v]['ned']}) - **{st.session_state.vorm}**:")
-                        juist = data["woorden"]["werkwoorden"][v][st.session_state.vorm]
-                    
-                    ant = st.text_input("Antwoord:").lower().strip()
-                    if st.form_submit_button("Check ✅"):
-                        if ant == juist:
-                            data["geld"] += 15
-                            sla_db_op(db)
-                            st.success("Correct! +€15"); st.balloons()
-                        else: st.error(f"Fout! Het juiste antwoord was: {juist}")
+                lijst = data["woorden"][cat]
+                
+                if v in lijst:
+                    with st.form(key="q_form", clear_on_submit=True):
+                        if cat == "woorden": 
+                            st.write(f"Vertaal: **{lijst[v]}**")
+                            juist = v
+                        else: 
+                            st.write(f"Vervoeg **{v}** ({lijst[v]['ned']}) - **{st.session_state.vorm}**:")
+                            juist = lijst[v][st.session_state.vorm]
+                        
+                        ant = st.text_input("Antwoord:").lower().strip()
+                        if st.form_submit_button("Check ✅"):
+                            if ant == juist:
+                                data["geld"] += 15
+                                db["users"][user] = data
+                                sla_db_op(db)
+                                st.success("Correct! +€15"); st.balloons()
+                            else: st.error(f"Fout! Het was: {juist}")
+                else:
+                    st.warning("De geselecteerde vraag bestaat niet meer in je lijst.")
+                    del st.session_state.vraag
 
     with t2:
         keuze = st.radio("Wat voeg je toe?", ["Woord", "Werkwoord"])
@@ -109,23 +119,19 @@ if st.session_state.page == "Frans":
                 n = st.text_input("Nederlands:").lower().strip()
                 if st.form_submit_button("Opslaan"):
                     data["woorden"]["woorden"][f] = n
-                    sla_db_op(db); st.rerun()
+                    db["users"][user] = data; sla_db_op(db); st.rerun()
         else:
             with st.form("add_ww", clear_on_submit=True):
                 inf = st.text_input("Heel werkwoord:").lower().strip()
                 ned = st.text_input("Betekenis:").lower().strip()
                 c1, c2 = st.columns(2)
                 with c1:
-                    je = st.text_input("Je:")
-                    tu = st.text_input("Tu:")
-                    il = st.text_input("Il/Elle:")
+                    je = st.text_input("Je:"); tu = st.text_input("Tu:"); il = st.text_input("Il/Elle:")
                 with c2:
-                    nous = st.text_input("Nous:")
-                    vous = st.text_input("Vous:")
-                    ils = st.text_input("Ils/Elles:")
+                    nous = st.text_input("Nous:"); vous = st.text_input("Vous:"); ils = st.text_input("Ils/Elles:")
                 if st.form_submit_button("Werkwoord Opslaan 💾"):
                     data["woorden"]["werkwoorden"][inf] = {"ned": ned, "je": je, "tu": tu, "il": il, "nous": nous, "vous": vous, "ils": ils}
-                    sla_db_op(db); st.rerun()
+                    db["users"][user] = data; sla_db_op(db); st.rerun()
 
     with t3:
         st.subheader("Jouw Woordenlijst")
