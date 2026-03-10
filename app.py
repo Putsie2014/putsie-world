@@ -184,3 +184,35 @@ if st.session_state.page == "Admin":
             if st.button("Verwijder deze speler"):
                 del db["users"][te_beheren]
                 sla_db_op(db); st.success("Speler verwijderd!"); st.rerun()
+
+# --- NIEUWE PAGINA: KLASLOKAAL ---
+if st.session_state.page == "Klas":
+    st.title("🏫 Putsie Klaslokaal")
+    
+    # Check of de gebruiker leerkracht is (of admin)
+    if user in ["leerkracht", "admin"]:
+        tab1, tab2 = st.tabs(["Klas beheren", "Taken instellen"])
+        
+        with tab1:
+            klas_naam = st.text_input("Naam nieuwe klas:")
+            if st.button("Maak Klas"):
+                db["klassen"] = db.get("klassen", {})
+                db["klassen"][klas_naam] = {"leerlingen": [], "taken": []}
+                sla_db_op(db); st.rerun()
+                
+        with tab2:
+            st.subheader("Taak aanmaken")
+            taak_naam = st.text_input("Naam van de taak:")
+            beloning = st.number_input("Verdienbaar geld:", value=50)
+            if st.button("Taak plaatsen"):
+                # Hier zou je de logica toevoegen om de taak in de klas-database op te slaan
+                st.success(f"Taak '{taak_naam}' geplaatst!")
+                
+    else:
+        st.write("### Jouw Taken")
+        # Hier toon je de taken die de leerkracht voor deze leerling heeft klaargezet
+        st.info("Geen taken gevonden. Vraag je leerkracht om hulp!")
+
+# --- SIDEBAR UPDATEN ---
+# Voeg deze regel toe in je sidebar menu
+if st.button("🏫 Klaslokaal", use_container_width=True): st.session_state.page = "Klas"
