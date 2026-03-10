@@ -3,138 +3,127 @@ import json
 import os
 import random
 
-# --- 1. CONFIGURATIE & INITIALISATIE ---
+# --- 1. CONFIGURATIE ---
 DB_FILE = "database.json"
 st.set_page_config(page_title="Putsie Studios", layout="wide")
 
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 if 'page' not in st.session_state: st.session_state.page = "Home"
-if 'username' not in st.session_state: st.session_state.username = None
 
-# --- 2. BULLETPROOF DATABASE FUNCTIES ---
+# --- 2. DATABASE ---
 def laad_db():
-    if not os.path.exists(DB_FILE): 
-        return {"users": {}}
+    if not os.path.exists(DB_FILE): return {"users": {}}
     try:
-        with open(DB_FILE, "r", encoding="utf-8") as f: 
-            return json.load(f)
-    except:
-        return {"users": {}}
+        with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
+    except: return {"users": {}}
 
 def sla_db_op(db):
-    with open(DB_FILE, "w", encoding="utf-8") as f: 
-        json.dump(db, f, indent=4)
+    with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db, f, indent=4)
 
-# --- 3. LOGIN SYSTEEM ---
+# --- 3. LOGIN ---
 if not st.session_state.ingelogd:
-    st.title("🌍 Putsie Studios - Welkom")
-    tab_log, tab_reg = st.tabs(["Inloggen", "Nieuw Account"])
+    st.title("🌍 Putsie Studios - Login")
+    t1, t2 = st.tabs(["Inloggen", "Registreren"])
     db = laad_db()
-    
-    with tab_log:
-        u_log = st.text_input("Gebruikersnaam", key="u_log").lower().strip()
-        p_log = st.text_input("Wachtwoord", type="password", key="p_log")
+    with t1:
+        u = st.text_input("Naam", key="l_u").lower().strip()
+        p = st.text_input("Wachtwoord", type="password", key="l_p")
         if st.button("Log in"):
-            if u_log in db["users"] and db["users"][u_log]["password"] == p_log:
+            if u in db["users"] and db["users"][u]["password"] == p:
                 st.session_state.ingelogd = True
-                st.session_state.username = u_log
+                st.session_state.username = u
                 st.rerun()
-            else:
-                st.error("Gebruiker niet gevonden of wachtwoord fout.")
-
-    with tab_reg:
-        u_reg = st.text_input("Kies Gebruikersnaam", key="u_reg").lower().strip()
-        p_reg = st.text_input("Kies Wachtwoord", type="password", key="p_reg")
-        if st.button("Registreer"):
-            if u_reg and p_reg:
-                if u_reg not in db["users"]:
-                    db["users"][u_reg] = {"password": p_reg, "geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}}
-                    sla_db_op(db)
-                    st.success("Account aangemaakt! Log nu in.")
-                else: st.warning("Deze naam bestaat al.")
+            else: st.error("Fout!")
+    with t2:
+        ru = st.text_input("Kies Naam", key="r_u").lower().strip()
+        rp = st.text_input("Kies Wachtwoord", type="password", key="r_p")
+        if st.button("Maak Account"):
+            if ru and rp and ru not in db["users"]:
+                db["users"][ru] = {"password": rp, "geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}}
+                sla_db_op(db)
+                st.success("Klaar! Log nu in.")
     st.stop()
 
-# --- 4. DATA VALIDATIE ---
+# --- 4. DATA & FIXES ---
 db = laad_db()
 user = st.session_state.username
-if "woorden" not in db["users"][user]: db["users"][user]["woorden"] = {"werkwoorden": {}, "woorden": {}}
-if "werkwoorden" not in db["users"][user]["woorden"]: db["users"][user]["woorden"]["werkwoorden"] = {}
-if "woorden" not in db["users"][user]["woorden"]: db["users"][user]["woorden"]["woorden"] = {}
 data = db["users"][user]
+# Zorg dat de structuur altijd klopt
+if "woorden" not in data: data["woorden"] = {"werkwoorden": {}, "woorden": {}}
 
-# --- 5. ZIJKANT NAVIGATIE ---
+# --- 5. ZIJKANT ---
 with st.sidebar:
     st.title(f"👤 {user.capitalize()}")
     st.metric("Saldo", f"€{data['geld']}")
     st.write("---")
     if st.button("🏠 Home", use_container_width=True): st.session_state.page = "Home"
     st.write("### 🎓 Education")
-    if st.button("🇫🇷 Frans & Werkwoorden", use_container_width=True): st.session_state.page = "Frans"
+    if st.button("🇫🇷 Frans", use_container_width=True): st.session_state.page = "Frans"
     st.write("### 📖 Entertainment")
-    if st.button("📚 Putsie Strips", use_container_width=True): st.session_state.page = "Strips"
-    if st.button("🕹️ Putsie Games", use_container_width=True): st.session_state.page = "Games"
-    if st.button("🎧 Putsie Music", use_container_width=True): st.session_state.page = "Music"
+    if st.button("📚 Strips", use_container_width=True): st.session_state.page = "Strips"
+    if st.button("🕹️ Games", use_container_width=True): st.session_state.page = "Games"
+    if st.button("🎧 Music", use_container_width=True): st.session_state.page = "Music"
     st.write("---")
-    if st.button("Uitloggen", use_container_width=True):
-        st.session_state.clear()
-        st.rerun()
+    if st.button("Uitloggen"): st.session_state.clear(); st.rerun()
 
 # --- 6. PAGINA: FRANS ---
 if st.session_state.page == "Frans":
     st.title("🎓 Putsie Education: Frans")
-    t1, t2 = st.tabs(["🎯 Quiz", "➕ Woorden Toevoegen"])
     
-    with t1:
-        cat = st.selectbox("Kies Categorie", ["woorden", "werkwoorden"])
-        lijst = data["woorden"][cat]
-        
-        if not lijst:
-            st.info("Voeg eerst woorden toe bij het tabblad 'Toevoegen'.")
+    # Bereken totaal aantal woorden voor de 10-woorden-grens
+    totaal_woorden = len(data["woorden"]["woorden"]) + len(data["woorden"]["werkwoorden"])
+    
+    tab1, tab2 = st.tabs(["🎯 Quiz", "➕ Toevoegen"])
+    
+    with tab1:
+        if totaal_woorden < 10:
+            st.warning(f"⚠️ Je hebt nog maar {totaal_woorden} woorden. Voeg er minstens 10 toe om de quiz te kunnen spelen!")
         else:
-            if st.button("Nieuwe Vraag 🆕"):
-                st.session_state.vraag = random.choice(list(lijst.keys()))
-                st.session_state.answered = False
+            cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
+            lijst = data["woorden"][cat]
             
-            if 'vraag' in st.session_state:
-                v = st.session_state.vraag
-                st.subheader(f"Vertaal naar het Frans: **{lijst[v]}**")
+            if not lijst:
+                st.info(f"Je hebt geen woorden in de categorie '{cat}'.")
+            else:
+                if st.button("Nieuwe Vraag 🆕"):
+                    st.session_state.vraag = random.choice(list(lijst.keys()))
+                    st.session_state.answered = False
                 
-                # FORMULIER ZORGT DAT VAKJE LEEG WORDT NA KLIKKEN
-                with st.form(key="quiz_form", clear_on_submit=True):
-                    ant = st.text_input("Antwoord:").lower().strip()
-                    submit = st.form_submit_button("Check Antwoord ✅")
-                    
-                    if submit:
-                        if st.session_state.get('answered', False):
-                            st.warning("Je hebt al geld gekregen voor deze vraag!")
-                        elif ant == v:
-                            data["geld"] += 15
-                            sla_db_op(db)
-                            st.session_state.answered = True
-                            st.success(f"Helemaal goed! +€15. Klik op 'Nieuwe Vraag' voor de volgende.")
-                            st.balloons() # DE LEUKE BALLONNEN!
-                        else:
-                            st.error(f"Helaas! Het juiste antwoord was: {v}")
+                if 'vraag' in st.session_state:
+                    v = st.session_state.vraag
+                    st.subheader(f"Vertaal: **{lijst[v]}**")
+                    with st.form(key="q_form", clear_on_submit=True):
+                        # .lower().strip() zorgt dat hoofdletters en spaties niet uitmaken!
+                        ant = st.text_input("Antwoord:").lower().strip()
+                        if st.form_submit_button("Check ✅"):
+                            if st.session_state.get('answered', False):
+                                st.warning("Al beantwoord!")
+                            elif ant == v.lower().strip():
+                                data["geld"] += 15
+                                sla_db_op(db)
+                                st.session_state.answered = True
+                                st.success("Correct! +€15")
+                                st.balloons()
+                            else:
+                                st.error(f"Fout! Het was: {v}")
 
-    with t2:
-        st.subheader("Voeg nieuwe items toe")
-        # FORMULIER VOOR TOEVOEGEN (MAAKT VAKJES OOK LEEG)
-        with st.form(key="add_form", clear_on_submit=True):
-            c_toe = st.selectbox("Type:", ["woorden", "werkwoorden"])
-            f_w = st.text_input("Frans woord:")
-            n_w = st.text_input("Nederlandse vertaling:")
-            if st.form_submit_button("Opslaan in Database 💾"):
+    with tab2:
+        st.subheader("Voeg woorden toe (Je hebt er nu: {0})".format(totaal_woorden))
+        with st.form(key="add_f", clear_on_submit=True):
+            c_t = st.selectbox("Type", ["woorden", "werkwoorden"])
+            f_w = st.text_input("Frans:").lower().strip()
+            n_w = st.text_input("Nederlands:").lower().strip()
+            if st.form_submit_button("Opslaan 💾"):
                 if f_w and n_w:
-                    data["woorden"][c_toe][f_w.lower()] = n_w.lower()
+                    data["woorden"][c_t][f_w] = n_w
                     sla_db_op(db)
-                    st.success(f"'{f_w}' is succesvol opgeslagen!")
-                else:
-                    st.warning("Vul beide vakjes in!")
+                    st.success(f"'{f_w}' toegevoegd!")
+                    st.rerun() # Refresh om de teller direct bij te werken
 
-# --- OVERIGE PAGINA'S (STRIKT BEHOUDEN) ---
+# --- OVERIGE PAGINA'S ---
 elif st.session_state.page == "Strips": st.title("📖 Putsie Strips")
 elif st.session_state.page == "Games": st.title("🕹️ Putsie Games")
 elif st.session_state.page == "Music": st.title("🎵 Putsie Music")
 else:
-    st.title("🏠 Putsie Studios Home")
-    st.write(f"Welkom, **{user}**! Je saldo is **€{data['geld']}**.")
+    st.title("🏠 Home")
+    st.write(f"Welkom bij Putsie Studios, **{user}**!")
