@@ -27,66 +27,48 @@ def sla_db_op(db):
 
 init_db()
 
-# --- 2. LOGIN & REGISTRATIE (Verbeterd) ---
+# --- 2. LOGIN & REGISTRATIE ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 
 if not st.session_state.ingelogd:
     st.title("🌍 Putsie Studios - Login/Registratie")
     db = laad_db()
     tab1, tab2 = st.tabs(["Inloggen", "Account aanmaken"])
-    
     with tab1:
         u = st.text_input("Naam", key="l_u").lower().strip()
         p = st.text_input("Wachtwoord", type="password", key="l_p")
         if st.button("Log in"):
             if u in db["users"] and db["users"][u].get("password") == p:
                 st.session_state.ingelogd = True; st.session_state.username = u; st.rerun()
-            else: st.error("Gebruikersnaam of wachtwoord onjuist!")
-            
+            else: st.error("Fout!")
     with tab2:
         ru = st.text_input("Kies Naam", key="r_u").lower().strip()
         rp = st.text_input("Kies Wachtwoord", type="password", key="r_p")
         if st.button("Maak Account"):
-            if not ru or not rp:
-                st.warning("Vul beide velden in!")
-            elif ru in db["users"]:
-                st.error("Deze naam bestaat al!")
-            else:
-                # Hier maken we de nieuwe gebruiker met alle benodigde velden
-                db["users"][ru] = {
-                    "password": rp, 
-                    "geld": 100, 
-                    "woorden": {"werkwoorden": {}, "woorden": {}}, 
-                    "klas_id": None
-                }
-                sla_db_op(db)
-                st.success("Account aangemaakt! Log nu in via het tabblad 'Inloggen'.")
+            if ru and ru not in db["users"]:
+                db["users"][ru] = {"password": rp, "geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None}
+                sla_db_op(db); st.success("Account gemaakt!"); st.rerun()
     st.stop()
 
-# --- 4. PAGINA'S ---
+# --- 3. GEDEELDE DATA ---
+db = laad_db()
+user = st.session_state.username
+data = db["users"].get(user, {"geld": 100, "woorden": {"werkwoorden": {}, "woorden": {}}, "klas_id": None})
+
+# --- 4. ZIJKANT ---
+with st.sidebar:
+    st.metric("Saldo", f"€{data.get('geld', 0)}")
+    if st.button("🏠 Home"): st.session_state.page = "Home"
+    if st.button("🇫🇷 Frans & Werkwoorden"): st.session_state.page = "Frans"
+    if st.button("🏫 Klaslokaal"): st.session_state.page = "Klas"
+    if st.button("Uitloggen"): st.session_state.clear(); st.rerun()
+
+# --- 5. PAGINA LOGICA ---
 page = st.session_state.get("page", "Home")
 
-if page == "Frans":
-    st.title("🎓 Frans & Werkwoorden")
-    t1, t2 = st.tabs(["🎯 Quiz", "➕ Toevoegen"])
-    with t1:
-        cat = st.selectbox("Categorie", ["woorden", "werkwoorden"])
-        if st.button("Nieuwe Vraag"):
-            st.session_state.vraag = random.choice(list(data["woorden"][cat].keys()))
-            st.rerun()
-        if 'vraag' in st.session_state:
-            v = st.session_state.vraag
-            st.write(f"Vertaal: **{v}**")
-            ans = st.text_input("Antwoord:")
-            if st.button("Check"):
-                data["geld"] += 10; db["users"][user] = data; sla_db_op(db); st.success("Correct! +€10")
-    with t2:
-        f = st.text_input("Frans"); n = st.text_input("Nederlands")
-        if st.button("Opslaan"):
-            data["woorden"]["woorden"][f] = n; db["users"][user] = data; sla_db_op(db); st.rerun()
-
-elif page == "Klas":
+if page == "Klas":
     st.title("🏫 Putsie Klaslokaal")
+    # Veilige check voor leerkrachten
     if user.lower() in LEERKRACHTEN:
         naam = st.text_input("Naam nieuwe klas:")
         if st.button("Genereer Klas"):
@@ -99,17 +81,23 @@ elif page == "Klas":
                     if st.button("Plaats Taak", key=f"p_{code}"):
                         info["taken"].append({"taak": t, "beloning": b}); sla_db_op(db); st.rerun()
     else:
+        # Leerling logica
         if not data.get("klas_id"):
             c = st.text_input("Vul klascode in:").upper()
             if st.button("Deelnemen"):
-                data["klas_id"] = c; db["users"][user] = data; sla_db_op(db); st.rerun()
+                if c in db["klassen"]:
+                    data["klas_id"] = c; db["users"][user] = data; sla_db_op(db); st.rerun()
+                else: st.error("Code bestaat niet!")
         else:
             klas = db["klassen"].get(data["klas_id"], {})
-            st.subheader(f"Klas: {klas.get('naam', 'Onbekend')}")
+            st.write(f"Klas: {klas.get('naam', 'Niet gevonden')}")
             for i, taak in enumerate(klas.get("taken", [])):
-                st.write(f"✅ {taak['taak']} (Beloning: €{taak['beloning']})")
-                if st.button(f"Taak Voltooid! {i}"):
+                if st.button(f"Voltooid: {taak['taak']} (+€{taak['beloning']})", key=f"t_{i}"):
                     data["geld"] += taak['beloning']; db["users"][user] = data; sla_db_op(db); st.rerun()
 
+elif page == "Frans":
+    st.title("🎓 Frans & Werkwoorden")
+    # (Je quiz logica hier...)
+    st.write("Frans sectie actief")
 else:
     st.title("🏠 Welkom bij Putsie Studios!")
