@@ -144,7 +144,7 @@ elif st.session_state.page == "Music": st.title("🎵 Putsie Music")
 else: st.title("🏠 Welkom bij Putsie Studios!")
 
 # --- 5. BEHEERDERS PANEEL (Alleen voor Elliot) ---
-if st.session_state.ingelogd and st.session_state.username == "elliot" "Admin" :
+if st.session_state.ingelogd and st.session_state.username ["elliot", "Admin",] :
     with st.sidebar:
         st.write("---")
         st.subheader("⚙️ Beheerpaneel")
