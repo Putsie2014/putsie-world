@@ -109,14 +109,10 @@ elif page == "Klas":
             for i, taak in enumerate(klas.get("taken", [])):
                 if st.button(f"Start: {taak['taak']} (+€{taak['beloning']})", key=f"start_{i}"):
                     st.session_state.actieve_taak = taak
+            
             if 'actieve_taak' in st.session_state:
                 t = st.session_state.actieve_taak
-                ant = st.text_input(f"Vertaal iets uit je woordenlijst voor taak: {t['taak']}")
+                st.write(f"Vertaal iets uit je woordenlijst voor taak: **{t['taak']}**")
+                ant = st.text_input("Jouw vertaling:")
                 if st.button("Voltooien"):
                     data["geld"] += t['beloning']; db["users"][user] = data; sla_db_op(db); del st.session_state.actieve_taak; st.rerun()
-
-else:
-    st.title("🏠 Welkom bij Putsie Studios!")
-                            st.error("Niet goed, probeer het nog eens!")
-                else:
-                    st.warning("Voeg eerst woorden toe aan je woordenlijst!")
