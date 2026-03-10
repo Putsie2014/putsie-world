@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import os
-from openai import OpenAI  # <--- Dit moet overeenkomen met de requirements!
+from openai import OpenAI
 
 # --- 1. CONFIGURATIE & SETUP ---
 DB_FILE = "database.json"
