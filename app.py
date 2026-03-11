@@ -1,11 +1,16 @@
 import streamlit as st
+import sqlite3
+import hashlib
 from openai import OpenAI
 
-# De code zoekt automatisch in de beveiligde 'secrets' van de server
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# 1. DEFINIEER HIER JE VARIABELEN
+SITE_TITLE = "(indev) Putsie EDUCATION 🎓"
 
+# 2. INITIALISEER DE CONFIGURATIE
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
 
+# 3. INITIALISEER DE CLIENT (met Secrets!)
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 # --- DATABASE FUNCTIES (SQLite) ---
 def init_db():
     conn = sqlite3.connect('users.db')
