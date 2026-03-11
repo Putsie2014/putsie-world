@@ -1,6 +1,7 @@
 import streamlit as st
 import random
 from openai import OpenAI
+import streamlit.components.v1 as components
 
 # --- CONFIGURATIE ---
 SITE_TITLE = "Putsie EDUCATION 🎓 v3.0"
