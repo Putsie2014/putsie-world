@@ -5,7 +5,7 @@ from openai import OpenAI
 import streamlit.components.v1 as components
 
 # --- CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v3.6 FIX"
+SITE_TITLE = "(AI) Putsie EDUCATION 🎓 v0.5"
 MODEL_NAAM = "llama-3.1-8b-instant"
 AI_PUNT_PRIJS = 1000
 COOLDOWN_SECONDS = 60 
