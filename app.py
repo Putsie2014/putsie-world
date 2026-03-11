@@ -128,4 +128,6 @@ elif nav == "👑 Super Admin":
 if st.sidebar.button("Uitloggen"):
     st.session_state.ingelogd = False
     st.rerun()
+   
+    
     <meta name="google-adsense-account" content="ca-pub-8729817167190879">
