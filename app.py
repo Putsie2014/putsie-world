@@ -207,30 +207,53 @@ elif nav == "🇫🇷 Frans Lab":
 if st.sidebar.button("Uitloggen", key="logout"):
     st.session_state.ingelogd = False
     st.rerun()
-# --- ZORG DAT DIT BLOK EXACT ZO IN JE CODE STAAT ---
 elif nav == "🎮 3D Doolhof":
-    st.title("🎮 3D Doolhof")
+    st.title("🎮 First-Person Doolhof")
+    st.write("Klik in het scherm om te beginnen met lopen (WASD + Muis).")
+    
     maze_html = """
-    <div id="game-container" style="width: 100%; height: 500px; background: #000;"></div>
+    <div id="game-container" style="width: 100%; height: 500px;"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
     <script>
         const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x202020);
         const camera = new THREE.PerspectiveCamera(75, 800/500, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(800, 500);
         document.getElementById('game-container').appendChild(renderer.domElement);
 
-        const geometry = new THREE.BoxGeometry();
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
+        // Grond en muren (Simpele blokken)
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({color: 0x444444}));
+        plane.rotation.x = -Math.PI / 2;
+        scene.add(plane);
 
-        camera.position.z = 5;
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 0.2), new THREE.MeshBasicMaterial({color: 0xffffff}));
+        wall.position.set(0, 1, -5);
+        scene.add(wall);
+
+        camera.position.y = 1.6; // Ooghoogte
+        
+        // Controls (First person)
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        document.getElementById('game-container').addEventListener('click', () => controls.lock());
+
+        // Beweging
+        const move = {forward: false, backward: false, left: false, right: false};
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW') move.forward = true;
+            if (e.code === 'KeyS') move.backward = true;
+            if (e.code === 'KeyA') move.left = true;
+            if (e.code === 'KeyD') move.right = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW') move.forward = false;
+            // ... (rest van keyup logic)
+        });
 
         function animate() {
             requestAnimationFrame(animate);
-            cube.rotation.x += 0.01;
-            cube.rotation.y += 0.01;
+            if (move.forward) controls.moveForward(0.1);
             renderer.render(scene, camera);
         }
         animate();
