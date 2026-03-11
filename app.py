@@ -1,16 +1,26 @@
 import streamlit as st
-import sqlite3
-import hashlib
 from openai import OpenAI
 
-# 1. DEFINIEER HIER JE VARIABELEN
-SITE_TITLE = "(indev) Putsie EDUCATION 🎓"
+# Definieer de Groq client
+# We gebruiken de Groq API key uit je Secrets
+client = OpenAI(
+    api_key=st.secrets["GROQ_API_KEY"],
+    base_url="https://api.groq.com/openai/v1"
+)
 
-# 2. INITIALISEER DE CONFIGURATIE
-st.set_page_config(page_title=SITE_TITLE, layout="wide")
+def vraag_groq(vraag):
+    try:
+        response = client.chat.completions.create(
+            # Je kunt hier 'llama3-8b-8192' of 'mixtral-8x7b-32768' gebruiken
+            model="llama3-8b-8192", 
+            messages=[{"role": "user", "content": vraag}]
+        )
+        return response.choices[0].message.content
+    except Exception as e: 
+        return f"Error: {e}"
 
-# 3. INITIALISEER DE CLIENT (met Secrets!)
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# In je Streamlit app roep je hem zo aan:
+st.write(vraag_groq("Wat is de hoofdstad van Frankrijk?"))
 # --- DATABASE FUNCTIES (SQLite) ---
 def init_db():
     conn = sqlite3.connect('users.db')
