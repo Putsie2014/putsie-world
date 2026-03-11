@@ -5,14 +5,14 @@ from openai import OpenAI
 import streamlit.components.v1 as components
 
 # --- CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v3.5 MASTER"
+SITE_TITLE = "Putsie EDUCATION 🎓 v3.6 FIX"
 MODEL_NAAM = "llama-3.1-8b-instant"
 AI_PUNT_PRIJS = 1000
 COOLDOWN_SECONDS = 60 
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
 
-# --- 1. INITIALISATIE VAN DE DATABASE (HET GEHEUGEN) ---
+# --- 1. INITIALISATIE VAN DE DATABASE ---
 if 'users' not in st.session_state:
     st.session_state.users = {
         "elliot": {"pw": "Putsie", "role": "admin"},
@@ -28,10 +28,15 @@ if 'security_alert' not in st.session_state: st.session_state.security_alert = F
 if 'ai_antwoord' not in st.session_state: st.session_state.ai_antwoord = ""
 if 'tasks' not in st.session_state: st.session_state.tasks = []
 if 'chat_messages' not in st.session_state: st.session_state.chat_messages = []
-if 'vocab_lists' not in st.session_state: st.session_state.vocab_lists = [] # Lijsten van leraar
-if 'user_vocab' not in st.session_state: st.session_state.user_vocab = {} # Persoonlijke woorden van leerling
+if 'vocab_lists' not in st.session_state: st.session_state.vocab_lists = []
+if 'user_vocab' not in st.session_state: 
+    # Forceer een startlijst voor de standaard accounts
+    st.session_state.user_vocab = {
+        "elliot": {"hallo": "bonjour"}, 
+        "annelies": {"hallo": "bonjour"}
+    }
 
-# --- 2. LOCKDOWN & SECURITY CHECK (TOP PRIORITEIT) ---
+# --- 2. LOCKDOWN & SECURITY CHECK ---
 is_admin = st.session_state.get('username') == "elliot"
 
 if st.session_state.lockdown and not is_admin:
@@ -47,7 +52,7 @@ if is_admin and st.session_state.security_alert:
         st.session_state.security_alert = False
         st.rerun()
 
-# --- 3. AI CLIENT & FUNCTIES ---
+# --- 3. AI CLIENT ---
 client = OpenAI(api_key=st.secrets.get("GROQ_API_KEY", "dummy_key"), base_url="https://api.groq.com/openai/v1")
 
 def vraag_groq(vraag):
@@ -84,7 +89,7 @@ if not st.session_state.ingelogd:
                 st.session_state.ingelogd = True
                 st.session_state.username = u
                 st.session_state.role = st.session_state.users[u].get("role", "student")
-                # Zorg dat de leerling een eigen woordenlijst heeft in het geheugen
+                # BUGFIX: Zorg dat elke inloggende speler een vocab-lijst krijgt als ze die missen
                 if u not in st.session_state.user_vocab:
                     st.session_state.user_vocab[u] = {"hallo": "bonjour"}
                 st.rerun()
@@ -122,7 +127,7 @@ if nav == "🏫 De Klas":
         for i, t in enumerate(st.session_state.tasks):
             with st.expander(t["title"]):
                 st.write(t["desc"])
-                if st.button(f"Markeer als Klaar", key=f"tk_{i}"): st.success("Ingeleverd!")
+                if st.button("Markeer als Klaar", key=f"tk_{i}"): st.success("Ingeleverd!")
                 
     with col2:
         st.subheader("📚 Woordenlijsten van de Leraar")
@@ -130,7 +135,10 @@ if nav == "🏫 De Klas":
         for i, vlist in enumerate(st.session_state.vocab_lists):
             st.write(f"**{vlist['title']}** ({len(vlist['words'])} woorden)")
             if st.button("📥 Download naar mijn Frans Lab", key=f"dl_{i}"):
-                st.session_state.user_vocab[st.session_state.username].update(vlist['words'])
+                # BUGFIX: Update de lijst veilig
+                huidige_woorden = st.session_state.user_vocab[st.session_state.username]
+                huidige_woorden.update(vlist['words'])
+                st.session_state.user_vocab[st.session_state.username] = huidige_woorden
                 st.success("Woorden toegevoegd aan jouw account!")
 
 # --- 7. PAGINA: GROEPSCHAT ---
@@ -138,11 +146,13 @@ elif nav == "💬 Groepschat":
     st.title("💬 Putsie Chat")
     st.write("Praat met de klas! (Leerkrachten kijken mee 👀)")
     
-    chat_box = st.container(height=400)
-    with chat_box:
+    # BUGFIX: native Streamlit chat elementen gebruiken voor stabiliteit
+    chat_container = st.container(height=400)
+    with chat_container:
+        if not st.session_state.chat_messages:
+            st.info("Nog geen berichten. Wees de eerste!")
         for msg in st.session_state.chat_messages:
-            kleur = "blue" if msg['user'] == st.session_state.username else "green"
-            st.markdown(f"**<span style='color:{kleur}'>{msg['user']}</span>**: {msg['text']}", unsafe_allow_html=True)
+            st.chat_message("user" if msg['user'] == st.session_state.username else "assistant").write(f"**{msg['user']}**: {msg['text']}")
             
     if txt := st.chat_input("Typ je bericht hier..."):
         st.session_state.chat_messages.append({"user": st.session_state.username, "text": txt})
@@ -178,14 +188,18 @@ elif nav == "🤖 AI Hulp":
 elif nav == "🇫🇷 Frans Lab":
     st.title("🇫🇷 Frans Lab")
     
-    t1, t2 = st.tabs(["🎮 Oefenen (+50 Munten)", "➕ Eigen woorden maken"])
-    
+    # Zeker weten dat de lijst bestaat voor deze gebruiker (extra beveiliging)
+    if st.session_state.username not in st.session_state.user_vocab:
+        st.session_state.user_vocab[st.session_state.username] = {"hallo": "bonjour"}
+        
     mijn_woorden = st.session_state.user_vocab[st.session_state.username]
+    
+    t1, t2 = st.tabs(["🎮 Oefenen (+50 Munten)", "➕ Eigen woorden maken"])
     
     with t1:
         st.write("Vertaal de woorden uit jouw persoonlijke woordenlijst om geld te verdienen!")
         if len(mijn_woorden) > 0:
-            if 'oefen_woord' not in st.session_state: 
+            if 'oefen_woord' not in st.session_state or st.session_state.oefen_woord not in mijn_woorden: 
                 st.session_state.oefen_woord = random.choice(list(mijn_woorden.keys()))
             
             st.subheader(f"Vertaal: **{st.session_state.oefen_woord}**")
@@ -206,8 +220,10 @@ elif nav == "🇫🇷 Frans Lab":
         nieuw_fr = st.text_input("Franse vertaling:").lower().strip()
         if st.button("Woord Opslaan"):
             if nieuw_nl and nieuw_fr:
-                st.session_state.user_vocab[st.session_state.username][nieuw_nl] = nieuw_fr
+                # BUGFIX: Duidelijk opslaan en rerunnen
+                st.session_state.user_vocab[st.session_state.username][nieuw_nl.strip()] = nieuw_fr.strip()
                 st.success(f"Opgeslagen: {nieuw_nl} = {nieuw_fr}")
+                st.rerun()
             else: st.error("Vul beide velden in.")
 
 # --- 10. PAGINA: LERAAR PANEEL ---
@@ -219,12 +235,18 @@ elif nav == "👩‍🏫 Leraar Paneel":
     woorden_ruw = st.text_area("Woorden (Formaat: nederlands=frans, elke op nieuwe regel)")
     if st.button("Post naar Klaslokaal"):
         woorden_dict = {}
+        # BUGFIX: Veilig splitsen zodat lege regels de boel niet laten crashen
         for regel in woorden_ruw.split("\n"):
             if "=" in regel:
-                nl, fr = regel.split("=")
-                woorden_dict[nl.strip()] = fr.strip().lower()
-        st.session_state.vocab_lists.append({"title": lijst_naam, "words": woorden_dict})
-        st.success(f"Lijst '{lijst_naam}' gedeeld met de klas!")
+                nl, fr = regel.split("=", 1) # Max 1 keer splitsen
+                if nl.strip() and fr.strip():
+                    woorden_dict[nl.strip()] = fr.strip().lower()
+                    
+        if woorden_dict:
+            st.session_state.vocab_lists.append({"title": lijst_naam, "words": woorden_dict})
+            st.success(f"Lijst '{lijst_naam}' gedeeld met de klas!")
+        else:
+            st.error("Je hebt geen geldige woorden ingevuld.")
         
     st.divider()
     st.subheader("2. Leerlingen Beheren")
@@ -237,7 +259,7 @@ elif nav == "👩‍🏫 Leraar Paneel":
                 st.session_state.users[s_naam]['pw'] = "1234"
                 st.success(f"Wachtwoord van {s_naam} is nu '1234'")
 
-# --- 11. PAGINA: ADMIN SECURITY (ELLIOT ONLY) ---
+# --- 11. PAGINA: ADMIN SECURITY ---
 elif nav == "👑 Admin Security":
     st.title("👑 Elliot's Control Room")
     
