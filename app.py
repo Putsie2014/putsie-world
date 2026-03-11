@@ -207,12 +207,10 @@ elif nav == "🇫🇷 Frans Lab":
 if st.sidebar.button("Uitloggen", key="logout"):
     st.session_state.ingelogd = False
     st.rerun()
-elif nav == "🎮 3D Doolhof":
-    st.title("🎮 First-Person Doolhof")
-    st.write("Klik in het scherm om te beginnen met lopen (WASD + Muis).")
-    
-    maze_html = """
-    <div id="game-container" style="width: 100%; height: 500px;"></div>
+# --------------------------------------------------Doolhof-------------------------------------------------------------------------------- #
+
+maze_html = """
+    <div id="game-container" style="width: 100%; height: 500px; cursor: pointer;"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
     <script>
@@ -223,37 +221,28 @@ elif nav == "🎮 3D Doolhof":
         renderer.setSize(800, 500);
         document.getElementById('game-container').appendChild(renderer.domElement);
 
-        // Grond en muren (Simpele blokken)
-        const plane = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({color: 0x444444}));
-        plane.rotation.x = -Math.PI / 2;
-        scene.add(plane);
-
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 0.2), new THREE.MeshBasicMaterial({color: 0xffffff}));
-        wall.position.set(0, 1, -5);
-        scene.add(wall);
-
-        camera.position.y = 1.6; // Ooghoogte
+        camera.position.set(0, 1.6, 5);
         
-        // Controls (First person)
         const controls = new THREE.PointerLockControls(camera, document.body);
         document.getElementById('game-container').addEventListener('click', () => controls.lock());
 
-        // Beweging
-        const move = {forward: false, backward: false, left: false, right: false};
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'KeyW') move.forward = true;
-            if (e.code === 'KeyS') move.backward = true;
-            if (e.code === 'KeyA') move.left = true;
-            if (e.code === 'KeyD') move.right = true;
-        });
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'KeyW') move.forward = false;
-            // ... (rest van keyup logic)
-        });
+        const keys = {w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false};
+        
+        document.addEventListener('keydown', (e) => { if(keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+        document.addEventListener('keyup', (e) => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
 
         function animate() {
             requestAnimationFrame(animate);
-            if (move.forward) controls.moveForward(0.1);
+            
+            // Snelheid
+            const speed = 0.15;
+            // Vooruit/Achteruit
+            if (keys.w || keys.ArrowUp) controls.moveForward(speed);
+            if (keys.s || keys.ArrowDown) controls.moveForward(-speed);
+            // Zijwaarts (Strafe)
+            if (keys.a || keys.ArrowLeft) controls.moveRight(-speed);
+            if (keys.d || keys.ArrowRight) controls.moveRight(speed);
+            
             renderer.render(scene, camera);
         }
         animate();
