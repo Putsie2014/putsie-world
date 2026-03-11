@@ -5,55 +5,61 @@ from openai import OpenAI
 import streamlit.components.v1 as components
 
 # --- CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v3.3"
+SITE_TITLE = "Putsie EDUCATION 🎓 v3.5 MASTER"
 MODEL_NAAM = "llama-3.1-8b-instant"
 AI_PUNT_PRIJS = 1000
 COOLDOWN_SECONDS = 60 
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
 
-# --- INITIALISATIE ---
+# --- 1. INITIALISATIE VAN DE DATABASE (HET GEHEUGEN) ---
 if 'users' not in st.session_state:
-    st.session_state.users = {"elliot": {"pw": "Putsie", "role": "admin"}}
-if 'saldi' not in st.session_state: st.session_state.saldi = {"elliot": 10000}
+    st.session_state.users = {
+        "elliot": {"pw": "Putsie", "role": "admin"},
+        "annelies": {"pw": "JufAnnelies", "role": "teacher"}
+    }
+if 'saldi' not in st.session_state: st.session_state.saldi = {"elliot": 10000, "annelies": 1000}
 if 'ai_points' not in st.session_state: st.session_state.ai_points = 5
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 if 'last_ai_call' not in st.session_state: st.session_state.last_ai_call = {}
 if 'lockdown' not in st.session_state: st.session_state.lockdown = False
 if 'lockdown_until' not in st.session_state: st.session_state.lockdown_until = None
 if 'security_alert' not in st.session_state: st.session_state.security_alert = False
-if 'ai_antwoord' not in st.session_state: st.session_state.ai_antwoord = "" # HET GEHEUGEN
+if 'ai_antwoord' not in st.session_state: st.session_state.ai_antwoord = ""
+if 'tasks' not in st.session_state: st.session_state.tasks = []
+if 'chat_messages' not in st.session_state: st.session_state.chat_messages = []
+if 'vocab_lists' not in st.session_state: st.session_state.vocab_lists = [] # Lijsten van leraar
+if 'user_vocab' not in st.session_state: st.session_state.user_vocab = {} # Persoonlijke woorden van leerling
 
-# --- LOCKDOWN CHECK ---
-if st.session_state.lockdown:
+# --- 2. LOCKDOWN & SECURITY CHECK (TOP PRIORITEIT) ---
+is_admin = st.session_state.get('username') == "elliot"
+
+if st.session_state.lockdown and not is_admin:
     st.markdown(f"<h1 style='text-align: center; margin-top: 20%; color: red;'>we zijn zo terug: Putsie Studios</h1>", unsafe_allow_html=True)
-    if st.session_state.get('username') == "elliot":
-        if st.button("🔓 Elliot: Unlock Site"): 
-            st.session_state.lockdown = False
-            st.rerun()
     st.stop()
 
-# --- SECURITY SYSTEEM ---
-if st.session_state.get('username') == "elliot" and st.session_state.security_alert:
-    st.error("🚨 SECURITY DETECTED: Onbevoegde wijziging gemerkt!")
+if is_admin and st.session_state.security_alert:
+    st.error("🚨 SECURITY DETECTED: Onbekende wijziging in de app-structuur opgemerkt!")
     c1, c2 = st.columns(2)
     if c1.button("NEGEER"): st.session_state.security_alert = False; st.rerun()
-    if c2.button("LOCKDOWN"): st.session_state.lockdown = True; st.session_state.security_alert = False; st.rerun()
+    if c2.button("LOCKDOWN NU"): 
+        st.session_state.lockdown = True
+        st.session_state.security_alert = False
+        st.rerun()
 
-# --- AI CLIENT ---
-client = OpenAI(api_key=st.secrets["GROQ_API_KEY"], base_url="https://api.groq.com/openai/v1")
+# --- 3. AI CLIENT & FUNCTIES ---
+client = OpenAI(api_key=st.secrets.get("GROQ_API_KEY", "dummy_key"), base_url="https://api.groq.com/openai/v1")
 
 def vraag_groq(vraag):
     u = st.session_state.username
     nu = datetime.now()
     
-    # Cooldown check
     if u in st.session_state.last_ai_call:
         verstreken = (nu - st.session_state.last_ai_call[u]).total_seconds()
         if verstreken < COOLDOWN_SECONDS:
             return f"⏳ Wacht {int(COOLDOWN_SECONDS - verstreken)} seconden."
 
-    if st.session_state.ai_points <= 0: return "❌ Geen AI Punten meer!"
+    if st.session_state.ai_points <= 0: return "❌ Geen AI Punten meer! Koop er in de winkel."
     
     st.session_state.ai_points -= 1
     st.session_state.last_ai_call[u] = nu
@@ -64,75 +70,198 @@ def vraag_groq(vraag):
             messages=[{"role": "system", "content": "Je bent een leraar."}, {"role": "user", "content": vraag}]
         )
         return response.choices[0].message.content
-    except Exception as e: return f"Fout: {e}"
+    except Exception as e: return f"AI Error: API key checken aub. ({e})"
 
-# --- LOGIN ---
+# --- 4. LOGIN & REGISTRATIE ---
 if not st.session_state.ingelogd:
-    st.title("🔐 Inloggen bij Putsie")
-    u = st.text_input("Naam").lower().strip()
-    p = st.text_input("Wachtwoord", type="password")
-    if st.button("Log in"):
-        if u in st.session_state.users and st.session_state.users[u]["pw"] == p:
-            st.session_state.ingelogd = True
-            st.session_state.username = u
-            st.rerun()
+    st.title(f"🔐 {SITE_TITLE}")
+    t1, t2 = st.tabs(["Inloggen", "Nieuw Account"])
+    with t1:
+        u = st.text_input("Naam", key="l_u").lower().strip()
+        p = st.text_input("Wachtwoord", type="password", key="l_p")
+        if st.button("Log in"):
+            if u in st.session_state.users and st.session_state.users[u]["pw"] == p:
+                st.session_state.ingelogd = True
+                st.session_state.username = u
+                st.session_state.role = st.session_state.users[u].get("role", "student")
+                # Zorg dat de leerling een eigen woordenlijst heeft in het geheugen
+                if u not in st.session_state.user_vocab:
+                    st.session_state.user_vocab[u] = {"hallo": "bonjour"}
+                st.rerun()
+            else: st.error("Foutieve gegevens!")
+    with t2:
+        nu = st.text_input("Kies een Naam", key="r_u").lower().strip()
+        np = st.text_input("Kies een Wachtwoord", type="password", key="r_p")
+        if st.button("Maak account"):
+            if nu and nu not in st.session_state.users:
+                st.session_state.users[nu] = {"pw": np, "role": "student"}
+                st.session_state.saldi[nu] = 0
+                st.session_state.user_vocab[nu] = {"hallo": "bonjour"}
+                st.success("Account gemaakt! Log nu in.")
+            else: st.error("Naam is leeg of bestaat al.")
     st.stop()
 
-# --- SIDEBAR & NAVIGATIE ---
-st.sidebar.title(f"👋 {st.session_state.username}")
+# --- 5. SIDEBAR & NAVIGATIE ---
+st.sidebar.title(f"👋 {st.session_state.username.capitalize()}")
 st.sidebar.metric("💰 Munten", st.session_state.saldi.get(st.session_state.username, 0))
 st.sidebar.metric("💎 AI Punten", st.session_state.ai_points)
 
-menu = ["🤖 AI Hulp", "🇫🇷 Frans Lab", "🎮 3D Doolhof"]
-if st.session_state.username == "elliot": menu.append("👑 Admin")
-nav = st.sidebar.radio("Ga naar", menu)
+menu = ["🏫 De Klas", "💬 Groepschat", "🤖 AI Hulp", "🇫🇷 Frans Lab", "🎮 3D Doolhof"]
+if st.session_state.role in ["teacher", "admin"]: menu.append("👩‍🏫 Leraar Paneel")
+if st.session_state.username == "elliot": menu.append("👑 Admin Security")
+nav = st.sidebar.radio("Navigatie", menu)
 
-# --- PAGINA: AI HULP ---
-if nav == "🤖 AI Hulp":
-    st.title("🤖 AI Studiehulp")
-    st.info(f"Cooldown: {COOLDOWN_SECONDS} sec | Kosten: 1 punt")
+# --- 6. PAGINA: DE KLAS ---
+if nav == "🏫 De Klas":
+    st.title("🏫 Het Klaslokaal")
     
-    vraag = st.text_area("Wat wil je weten?")
-    if st.button("Stel vraag"):
-        with st.spinner("AI denkt na..."):
-            antwoord = vraag_groq(vraag)
-            st.session_state.ai_antwoord = antwoord # Sla het antwoord op!
-            st.rerun() # Ververs om punten/cooldown bij te werken
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("📝 Jouw Taken")
+        if not st.session_state.tasks: st.info("Geen huiswerk vandaag!")
+        for i, t in enumerate(st.session_state.tasks):
+            with st.expander(t["title"]):
+                st.write(t["desc"])
+                if st.button(f"Markeer als Klaar", key=f"tk_{i}"): st.success("Ingeleverd!")
+                
+    with col2:
+        st.subheader("📚 Woordenlijsten van de Leraar")
+        if not st.session_state.vocab_lists: st.info("Geen nieuwe woordenlijsten.")
+        for i, vlist in enumerate(st.session_state.vocab_lists):
+            st.write(f"**{vlist['title']}** ({len(vlist['words'])} woorden)")
+            if st.button("📥 Download naar mijn Frans Lab", key=f"dl_{i}"):
+                st.session_state.user_vocab[st.session_state.username].update(vlist['words'])
+                st.success("Woorden toegevoegd aan jouw account!")
 
-    # Laat het opgeslagen antwoord ALTIJD zien
+# --- 7. PAGINA: GROEPSCHAT ---
+elif nav == "💬 Groepschat":
+    st.title("💬 Putsie Chat")
+    st.write("Praat met de klas! (Leerkrachten kijken mee 👀)")
+    
+    chat_box = st.container(height=400)
+    with chat_box:
+        for msg in st.session_state.chat_messages:
+            kleur = "blue" if msg['user'] == st.session_state.username else "green"
+            st.markdown(f"**<span style='color:{kleur}'>{msg['user']}</span>**: {msg['text']}", unsafe_allow_html=True)
+            
+    if txt := st.chat_input("Typ je bericht hier..."):
+        st.session_state.chat_messages.append({"user": st.session_state.username, "text": txt})
+        st.rerun()
+
+# --- 8. PAGINA: AI HULP ---
+elif nav == "🤖 AI Hulp":
+    st.title("🤖 AI Studiehulp")
+    st.warning(f"Cooldown: {COOLDOWN_SECONDS} sec | Kost: 1 AI Punt per vraag")
+    
+    vraag = st.text_area("Wat is je vraag?")
+    if st.button("Vraag het aan AI"):
+        with st.spinner("AI is aan het denken..."):
+            antwoord = vraag_groq(vraag)
+            st.session_state.ai_antwoord = antwoord
+            st.rerun()
+
     if st.session_state.ai_antwoord:
-        st.chat_message("assistant").write(st.session_state.ai_antwoord)
+        st.info("💡 Laatste AI Antwoord:")
+        st.write(st.session_state.ai_antwoord)
 
     st.divider()
+    st.subheader("🛒 AI Punten Winkel")
     if st.button(f"Koop 1 AI Punt ({AI_PUNT_PRIJS} munten)"):
         if st.session_state.saldi[st.session_state.username] >= AI_PUNT_PRIJS:
             st.session_state.saldi[st.session_state.username] -= AI_PUNT_PRIJS
             st.session_state.ai_points += 1
-            st.session_state.ai_antwoord = "Punt gekocht! Stel je vraag."
+            st.success("Punt gekocht!")
             st.rerun()
-        else: st.error("Te weinig munten!")
+        else: st.error("Je hebt niet genoeg munten! Ga werken in het Frans Lab.")
 
-# --- PAGINA: ADMIN ---
-elif nav == "👑 Admin":
-    st.title("Control Room")
-    if st.button("🚨 TEST SECURITY BREACH"):
-        st.session_state.security_alert = True
-        st.rerun()
-    
-    minuten = st.slider("Lockdown duur (min)", 1, 60, 10)
-    if st.button("🔒 START LOCKDOWN"):
-        st.session_state.lockdown = True
-        st.session_state.lockdown_until = datetime.now() + timedelta(minutes=minuten)
-        st.rerun()
-
-# --- FRANS LAB ---
+# --- 9. PAGINA: FRANS LAB ---
 elif nav == "🇫🇷 Frans Lab":
-    st.title("Frans Lab")
-    if st.button("Oefen woord (+50 munten)"):
-        st.session_state.saldi[st.session_state.username] += 50
-        st.success("Verdiend!")
+    st.title("🇫🇷 Frans Lab")
+    
+    t1, t2 = st.tabs(["🎮 Oefenen (+50 Munten)", "➕ Eigen woorden maken"])
+    
+    mijn_woorden = st.session_state.user_vocab[st.session_state.username]
+    
+    with t1:
+        st.write("Vertaal de woorden uit jouw persoonlijke woordenlijst om geld te verdienen!")
+        if len(mijn_woorden) > 0:
+            if 'oefen_woord' not in st.session_state: 
+                st.session_state.oefen_woord = random.choice(list(mijn_woorden.keys()))
+            
+            st.subheader(f"Vertaal: **{st.session_state.oefen_woord}**")
+            ans = st.text_input("Jouw antwoord (Frans):").lower().strip()
+            if st.button("Controleer"):
+                if ans == mijn_woorden[st.session_state.oefen_woord]:
+                    st.success("Perfect! +50 Munten 💰")
+                    st.session_state.saldi[st.session_state.username] += 50
+                    st.session_state.oefen_woord = random.choice(list(mijn_woorden.keys()))
+                    st.rerun()
+                else: st.error("Fout! Probeer het nog eens.")
+        else:
+            st.warning("Je hebt nog geen woorden! Voeg er toe in de andere tab.")
+
+    with t2:
+        st.write("Maak je eigen woorden aan om te oefenen.")
+        nieuw_nl = st.text_input("Nederlands woord:")
+        nieuw_fr = st.text_input("Franse vertaling:").lower().strip()
+        if st.button("Woord Opslaan"):
+            if nieuw_nl and nieuw_fr:
+                st.session_state.user_vocab[st.session_state.username][nieuw_nl] = nieuw_fr
+                st.success(f"Opgeslagen: {nieuw_nl} = {nieuw_fr}")
+            else: st.error("Vul beide velden in.")
+
+# --- 10. PAGINA: LERAAR PANEEL ---
+elif nav == "👩‍🏫 Leraar Paneel":
+    st.title("👩‍🏫 Docenten Dashboard")
+    
+    st.subheader("1. Woordenlijst Posten naar Klas")
+    lijst_naam = st.text_input("Titel (bijv. Hoofdstuk 3)")
+    woorden_ruw = st.text_area("Woorden (Formaat: nederlands=frans, elke op nieuwe regel)")
+    if st.button("Post naar Klaslokaal"):
+        woorden_dict = {}
+        for regel in woorden_ruw.split("\n"):
+            if "=" in regel:
+                nl, fr = regel.split("=")
+                woorden_dict[nl.strip()] = fr.strip().lower()
+        st.session_state.vocab_lists.append({"title": lijst_naam, "words": woorden_dict})
+        st.success(f"Lijst '{lijst_naam}' gedeeld met de klas!")
+        
+    st.divider()
+    st.subheader("2. Leerlingen Beheren")
+    for s_naam, s_data in st.session_state.users.items():
+        if s_data['role'] == 'student':
+            c1, c2, c3 = st.columns([2, 2, 1])
+            c1.write(f"**{s_naam}**")
+            c2.write(f"Munten: {st.session_state.saldi.get(s_naam, 0)}")
+            if c3.button("Reset Wachtwoord", key=f"pw_{s_naam}"):
+                st.session_state.users[s_naam]['pw'] = "1234"
+                st.success(f"Wachtwoord van {s_naam} is nu '1234'")
+
+# --- 11. PAGINA: ADMIN SECURITY (ELLIOT ONLY) ---
+elif nav == "👑 Admin Security":
+    st.title("👑 Elliot's Control Room")
+    
+    st.subheader("🚨 Beveiliging & Lockdown")
+    if st.button("TEST SECURITY BREACH"): st.session_state.security_alert = True; st.rerun()
+    if st.button("LOCKDOWN AAN"): st.session_state.lockdown = True; st.rerun()
+    if st.button("LOCKDOWN UIT"): st.session_state.lockdown = False; st.rerun()
+    
+    st.divider()
+    st.subheader("💰 Bank Beheren")
+    speler = st.selectbox("Kies Speler", list(st.session_state.saldi.keys()))
+    bedrag = st.number_input("Zet saldo op", value=st.session_state.saldi[speler])
+    if st.button("Update Saldo"):
+        st.session_state.saldi[speler] = bedrag
+        st.success("Aangepast!")
         st.rerun()
 
-if st.sidebar.button("Uitloggen"):
+# --- 12. PAGINA: 3D DOOLHOF ---
+elif nav == "🎮 3D Doolhof":
+    st.title("🎮 3D Doolhof")
+    components.html("""<div style="width:100%;height:400px;background:#222;color:#0f0;display:flex;align-items:center;justify-content:center;font-family:monospace;">[ THREE.JS ENGINE ACTIVE ]<br>Use WASD to move</div>""", height=450)
+
+# --- UITLOGGEN ---
+if st.sidebar.button("Uitloggen", type="primary"):
     st.session_state.ingelogd = False
+    st.session_state.username = None
     st.rerun()
