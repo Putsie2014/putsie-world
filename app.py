@@ -3,7 +3,7 @@ import random
 from openai import OpenAI
 
 # --- CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v2.6"
+SITE_TITLE = "Putsie EDUCATION 🎓 v2.7"
 MODEL_NAAM = "llama-3.1-8b-instant"
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
@@ -35,6 +35,7 @@ if 'tasks' not in st.session_state: st.session_state.tasks = []
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 if 'active_task' not in st.session_state: st.session_state.active_task = None
 if 'saldi' not in st.session_state: st.session_state.saldi = {}
+if 'class_code' not in st.session_state: st.session_state.class_code = "1234"
 if 'frans_woord_nu' not in st.session_state: st.session_state.frans_woord_nu = "hallo"
 
 frans_dict = {"hallo": "bonjour", "bedankt": "merci", "school": "école", "boek": "livre", "brood": "pain"}
@@ -66,7 +67,7 @@ if not st.session_state.ingelogd:
                 if correct_pw == p:
                     st.session_state.ingelogd = True
                     st.session_state.username = u
-                    st.session_state.role = u_data.get("role", "student") if isinstance(u_data, dict) else "student"
+                    st.session_state.role = u_data.get("role", "teacher") if u in ["elliot", "annelies"] else "student"
                     st.rerun()
                 else: st.error("Wachtwoord onjuist.")
             else: st.error("Gebruiker niet gevonden.")
@@ -80,24 +81,26 @@ if not st.session_state.ingelogd:
                         "annelies": {"pw": "JufAnnelies", "role": "teacher"}
                     }
                     st.session_state.tasks = []
+                    st.session_state.class_code = "1234"
                     st.rerun()
 
     with tab2:
         nu = st.text_input("Kies een Naam", key="reg_user").lower().strip()
         np = st.text_input("Kies een Wachtwoord", type="password", key="reg_pw")
-        code = st.text_input("Klascode (1234)", key="reg_code")
+        code_input = st.text_input("Klascode (Vraag aan de juf/meester)", key="reg_code")
         if st.button("Account Aanmaken", key="reg_btn"):
-            if code == "1234":
+            if code_input == st.session_state.class_code:
                 if nu and np and nu not in st.session_state.users:
                     st.session_state.users[nu] = {"pw": np, "role": "student"}
                     st.session_state.saldi[nu] = 0
                     st.success("Gelukt! Je kunt nu inloggen.")
                 else: st.error("Naam bezet of leeg.")
-            else: st.error("Klascode onjuist!")
+            else: st.error("Klascode onjuist! Kijk in 'De Klas' bij een ingelogde leerling.")
     st.stop()
 
 # --- INTERFACE ---
-st.sidebar.title(f"Welkom, {st.session_state.username.capitalize()}!")
+st.sidebar.title(f"👋 {st.session_state.username.capitalize()}")
+st.sidebar.info(f"Klascode: **{st.session_state.class_code}**") # Zichtbaar in de zijbalk
 opts = ["🏫 De Klas", "🤖 AI Hulp", "🇫🇷 Frans Lab"]
 if st.session_state.role == "teacher": opts.append("🛠️ Admin Paneel")
 nav = st.sidebar.radio("Navigatie", opts)
@@ -105,14 +108,28 @@ nav = st.sidebar.radio("Navigatie", opts)
 # --- DE KLAS ---
 if nav == "🏫 De Klas":
     st.title("🏫 De Klas")
+    
+    # Klascode display
+    st.success(f"### 🔑 De huidige klascode is: `{st.session_state.class_code}`")
+    st.write("Deel deze code met klasgenoten zodat ze zich kunnen registreren.")
+
     if st.session_state.role == "teacher":
-        st.subheader("👨‍🏫 Taak Toevoegen")
+        st.divider()
+        st.subheader("👨‍🏫 Instellingen voor Leerkrachten")
+        new_code = st.text_input("Verander de klascode:", value=st.session_state.class_code)
+        if st.button("Update Code"):
+            st.session_state.class_code = new_code
+            st.success(f"Code veranderd naar: {new_code}")
+            st.rerun()
+
+        st.subheader("Taak Toevoegen")
         t_n = st.text_input("Naam van taak")
         t_i = st.text_area("Wat moeten ze doen?")
         if st.button("Verstuur naar Klas"):
             st.session_state.tasks.append({"name": t_n, "content": t_i})
             st.success("Taak geplaatst!")
     
+    st.divider()
     st.subheader("Beschikbare Taken")
     if not st.session_state.tasks: st.write("Geen taken momenteel.")
     for i, t in enumerate(st.session_state.tasks):
