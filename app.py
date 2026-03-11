@@ -169,3 +169,36 @@ if st.sidebar.button("Log uit"):
     st.session_state.ingelogd = False
     st.session_state.username = ""
     st.rerun()
+# --- ADMIN PANEEL (Toevoegen in de HOOFD MENU ZIJBALK sectie) ---
+if st.session_state.username == "elliot": # Alleen voor admin
+    nav = st.sidebar.radio("Menu", ["🏫 De Klas", "🤖 AI Hulp", "🇫🇷 Frans Lab", "🛠️ Admin Paneel"])
+else:
+    nav = st.sidebar.radio("Menu", ["🏫 De Klas", "🤖 AI Hulp", "🇫🇷 Frans Lab"])
+
+# --- PAGINA: ADMIN PANEEL ---
+if nav == "🛠️ Admin Paneel":
+    st.title("🛠️ Admin Paneel")
+    
+    # 1. Gebruikers beheren
+    st.subheader("👤 Spelers Beheren")
+    user_to_delete = st.selectbox("Selecteer speler om te verwijderen:", list(st.session_state.users.keys()))
+    if st.button("Verwijder Speler"):
+        if user_to_delete != "elliot":
+            del st.session_state.users[user_to_delete]
+            st.rerun()
+        else:
+            st.error("Je kunt de admin niet verwijderen!")
+
+    # 2. Saldo aanpassen
+    st.subheader("💰 Saldo Aanpassen")
+    user_to_edit = st.selectbox("Selecteer speler voor saldo:", list(st.session_state.users.keys()))
+    amount = st.number_input("Bedrag wijzigen (bijv. 50 of -50):", value=0)
+    if st.button("Saldo Bijwerken"):
+        # We moeten saldo in session_state bijhouden
+        if 'saldi' not in st.session_state: st.session_state.saldi = {u: 100 for u in st.session_state.users}
+        st.session_state.saldi[user_to_edit] += amount
+        st.success(f"Nieuw saldo voor {user_to_edit}: {st.session_state.saldi[user_to_edit]}")
+
+    # 3. Database inzien (simpel overzicht)
+    st.subheader("📊 Database Inzicht")
+    st.write(st.session_state.users)
