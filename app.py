@@ -100,19 +100,97 @@ if st.session_state.role in ["teacher", "admin"]: menu.append("👩‍🏫 Leraa
 if st.session_state.username == "elliot": menu.append("👑 Admin Security")
 nav = st.sidebar.radio("Navigatie", menu)
 
-# --- 6. PAGINA: DE KLAS ---
+import streamlit as st
+import random
+from datetime import datetime, timedelta
+from openai import OpenAI
+import streamlit.components.v1 as components
+
+# --- 1. CONFIGURATIE (ALTIJD BOVENAAN!) ---
+COOLDOWN_SECONDS = 60 
+AI_PUNT_PRIJS = 1000
+SITE_TITLE = "Putsie EDUCATION 🎓 v3.8 MASTER-FIX"
+MODEL_NAAM = "llama-3.1-8b-instant"
+
+st.set_page_config(page_title=SITE_TITLE, layout="wide")
+
+# --- 2. DATABASE INITIALISATIE (DE FORCEER-METHODE) ---
+# We controleren elk item apart. Als het er niet is, maken we het aan.
+if 'users' not in st.session_state:
+    st.session_state.users = {"elliot": {"pw": "Putsie", "role": "admin"}, "annelies": {"pw": "JufAnnelies", "role": "teacher"}}
+if 'saldi' not in st.session_state:
+    st.session_state.saldi = {"elliot": 10000, "annelies": 1000}
+if 'user_vocab' not in st.session_state:
+    st.session_state.user_vocab = {"elliot": {"hallo": "bonjour"}, "annelies": {"hallo": "bonjour"}}
+if 'chat_messages' not in st.session_state:
+    st.session_state.chat_messages = []
+if 'vocab_lists' not in st.session_state:  # DIT LOST JE FOUT OP
+    st.session_state.vocab_lists = []
+if 'tasks' not in st.session_state:
+    st.session_state.tasks = []
+if 'ai_points' not in st.session_state:
+    st.session_state.ai_points = 5
+if 'ingelogd' not in st.session_state:
+    st.session_state.ingelogd = False
+if 'ai_antwoord' not in st.session_state:
+    st.session_state.ai_antwoord = ""
+if 'lockdown' not in st.session_state:
+    st.session_state.lockdown = False
+if 'security_alert' not in st.session_state:
+    st.session_state.security_alert = False
+if 'last_ai_call' not in st.session_state:
+    st.session_state.last_ai_call = {}
+
+# --- 3. LOCKDOWN & SECURITY ---
+is_admin = st.session_state.get('username') == "elliot"
+
+if st.session_state.lockdown and not is_admin:
+    st.markdown("<h1 style='text-align: center; margin-top: 20%; color: red;'>we zijn zo terug: Putsie Studios</h1>", unsafe_allow_html=True)
+    st.stop()
+
+# --- 4. LOGIN SYSTEEM ---
+if not st.session_state.ingelogd:
+    st.title(f"🔐 {SITE_TITLE}")
+    t1, t2 = st.tabs(["Inloggen", "Registreren"])
+    with t1:
+        u = st.text_input("Gebruikersnaam").lower().strip()
+        p = st.text_input("Wachtwoord", type="password")
+        if st.button("Log in"):
+            if u in st.session_state.users and st.session_state.users[u]["pw"] == p:
+                st.session_state.ingelogd = True
+                st.session_state.username = u
+                st.session_state.role = st.session_state.users[u].get("role", "student")
+                if u not in st.session_state.user_vocab: st.session_state.user_vocab[u] = {"hallo": "bonjour"}
+                st.rerun()
+            else: st.error("Fout!")
+    with t2:
+        nu = st.text_input("Nieuwe Naam").lower().strip()
+        np = st.text_input("Nieuw Wachtwoord", type="password")
+        if st.button("Account maken"):
+            if nu and nu not in st.session_state.users:
+                st.session_state.users[nu] = {"pw": np, "role": "student"}
+                st.session_state.saldi[nu] = 0
+                st.session_state.user_vocab[nu] = {"hallo": "bonjour"}
+                st.success("Klaar! Log nu in.")
+    st.stop()
+
+# --- 5. DE REST VAN DE APP ---
+st.sidebar.title(f"👋 {st.session_state.username}")
+st.sidebar.metric("💰 Munten", st.session_state.saldi.get(st.session_state.username, 0))
+st.sidebar.metric("💎 AI Punten", st.session_state.ai_points)
+
+nav = st.sidebar.radio("Menu", ["🏫 De Klas", "💬 Chat", "🤖 AI Hulp", "🇫🇷 Frans Lab"])
+
 if nav == "🏫 De Klas":
-    st.title("🏫 Het Klaslokaal")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("📝 Jouw Taken")
-        if not st.session_state.tasks: st.info("Geen huiswerk vandaag!")
-        for i, t in enumerate(st.session_state.tasks):
-            with st.expander(t["title"]):
-                st.write(t["desc"])
-                if st.button("Markeer als Klaar", key=f"tk_{i}"): st.success("Ingeleverd!")
-                
+    st.title("🏫 Klaslokaal")
+    # De check die eerst crashte:
+    if not st.session_state.vocab_lists:
+        st.info("Geen nieuwe woordenlijsten.")
+    else:
+        for v in st.session_state.vocab_lists:
+            st.write(f"Lijst: {v['title']}")
+
+# (Voeg hier de rest van je pagina's toe zoals in v3.6/3.7)
     with col2:
         st.subheader("📚 Woordenlijsten van de Leraar")
         if not st.session_state.vocab_lists: st.info("Geen nieuwe woordenlijsten.")
