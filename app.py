@@ -1,11 +1,8 @@
 import streamlit as st
-import sqlite3
-import hashlib
 from openai import OpenAI
 
-# --- CONFIGURATIE ---
-SITE_TITLE = "(indev) Putsie EDUCATION 🎓"
-client = OpenAI(api_key="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")
+# De code zoekt automatisch in de beveiligde 'secrets' van de server
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
 
