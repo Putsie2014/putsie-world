@@ -209,8 +209,12 @@ if st.sidebar.button("Uitloggen", key="logout"):
     st.rerun()
 # --------------------------------------------------Doolhof-------------------------------------------------------------------------------- #
 
-maze_html = """
-    <div id="game-container" style="width: 100%; height: 500px; cursor: pointer;"></div>
+elif nav == "🎮 3D Doolhof":
+    st.title("🎮 First-Person Doolhof")
+    st.write("Klik in het scherm om te beginnen met lopen (WASD + Pijltjes).")
+    
+    maze_html = """
+    <div id="game-container" style="width: 100%; height: 500px; cursor: pointer; border: 2px solid #fff;"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
     <script>
@@ -233,16 +237,11 @@ maze_html = """
 
         function animate() {
             requestAnimationFrame(animate);
-            
-            // Snelheid
             const speed = 0.15;
-            // Vooruit/Achteruit
             if (keys.w || keys.ArrowUp) controls.moveForward(speed);
             if (keys.s || keys.ArrowDown) controls.moveForward(-speed);
-            // Zijwaarts (Strafe)
             if (keys.a || keys.ArrowLeft) controls.moveRight(-speed);
             if (keys.d || keys.ArrowRight) controls.moveRight(speed);
-            
             renderer.render(scene, camera);
         }
         animate();
