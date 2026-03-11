@@ -202,3 +202,19 @@ if nav == "🛠️ Admin Paneel":
     # 3. Database inzien (simpel overzicht)
     st.subheader("📊 Database Inzicht")
     st.write(st.session_state.users)
+
+# --- FUNCTIE: WACHTWOORD WIJZIGEN ---
+st.subheader("🔑 Wachtwoord Wijzigen")
+user_to_change = st.selectbox("Selecteer gebruiker:", list(st.session_state.users.keys()))
+new_password = st.text_input("Nieuw wachtwoord:", type="password")
+
+if st.button("Wachtwoord Opslaan"):
+    if new_password:
+        st.session_state.users[user_to_change] = new_password
+        st.success(f"Het wachtwoord voor {user_to_change} is succesvol aangepast!")
+    else:
+        st.warning("Voer een geldig wachtwoord in.")
+# Zoek in je code naar de initialisatie van de users:
+if 'users' not in st.session_state:
+    # Verander hier het wachtwoord naar 'Putsie'
+    st.session_state.users = {"elliot": "Putsie"}
