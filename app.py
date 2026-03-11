@@ -26,10 +26,10 @@ client = OpenAI(
 
 # --- INITIALISATIE DATABASE ---
 if 'users' not in st.session_state:
-    # Elliot en Annelies zijn de leerkrachten
-    st.session_state.users = {
-        "elliot": {"pw": "Putsie", "role": "teacher"},
-        "annelies": {"pw": "JufAnnelies", "role": "teacher"}
+   st.session_state.users = {
+    "elliot": {"pw": "Putsie", "role": "teacher"},
+    "annelies": {"pw": "JufAnnelies", "role": "teacher"}
+}
     }
 if 'tasks' not in st.session_state: st.session_state.tasks = []
 if 'class_code' not in st.session_state: st.session_state.class_code = "1234"
