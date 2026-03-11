@@ -58,13 +58,24 @@ if not st.session_state.ingelogd:
     with tab1:
         u = st.text_input("Naam").lower().strip()
         p = st.text_input("Wachtwoord", type="password")
-        if st.button("Login"):
-            if u in st.session_state.users and st.session_state.users[u]["pw"] == p:
-                st.session_state.ingelogd = True
-                st.session_state.username = u
-                st.session_state.role = st.session_state.users[u]["role"]
-                st.rerun()
-            else: st.error("Onjuiste gegevens.")
+     if st.button("Login"):
+            # Check of gebruiker bestaat
+            if u in st.session_state.users:
+                user_data = st.session_state.users[u]
+                
+                # Check of het een oude 'string' is of nieuwe 'dict'
+                wachtwoord_opgeslagen = user_data["pw"] if isinstance(user_data, dict) else user_data
+                
+                if wachtwoord_opgeslagen == p:
+                    st.session_state.ingelogd = True
+                    st.session_state.username = u
+                    # Zorg dat de rol ook veilig is (default naar student)
+                    st.session_state.role = user_data.get("role", "student") if isinstance(user_data, dict) else "student"
+                    st.rerun()
+                else:
+                    st.error("Onjuiste gegevens.")
+            else:
+                st.error("Gebruiker niet gevonden.")
 
         with st.expander("🛠️ Systeembeheer"):
             reset_code = st.text_input("Reset code:", type="password")
