@@ -4,8 +4,15 @@ from datetime import datetime, timedelta
 from openai import OpenAI
 import streamlit.components.v1 as components
 
-# --- 1. DATABASE & CONFIGURATIE ---
-# We gebruiken een centrale 'database' in session_state die we altijd eerst checken
+# --- 1. CONFIGURATIE (ALTIJD BOVENAAN!) ---
+COOLDOWN_SECONDS = 60 
+AI_PUNT_PRIJS = 1000
+SITE_TITLE = "Putsie EDUCATION 🎓 v3.7 FIX"
+MODEL_NAAM = "llama-3.1-8b-instant"
+
+st.set_page_config(page_title=SITE_TITLE, layout="wide")
+
+# --- 2. INITIALISATIE ---
 def init_db():
     if 'db_init' not in st.session_state:
         st.session_state.users = {
@@ -15,23 +22,14 @@ def init_db():
         st.session_state.saldi = {"elliot": 10000, "annelies": 1000}
         st.session_state.user_vocab = {"elliot": {"hallo": "bonjour"}, "annelies": {"hallo": "bonjour"}}
         st.session_state.chat_messages = []
-        st.session_state.vocab_lists = []
+        st.session_state.tasks = []
+        st.session_state.ai_points = 5
         st.session_state.db_init = True
 
 init_db()
 
-# --- 2. LOGIN & REGISTRATIE LOGICA (DE FIX) ---
-def register_user(u, p):
-    u = u.lower().strip()
-    if u in st.session_state.users:
-        return False, "Gebruikersnaam bestaat al!"
-    
-    # Maak alle data structuren aan voor de nieuwe gebruiker
-    st.session_state.users[u] = {"pw": p, "role": "student"}
-    st.session_state.saldi[u] = 0
-    st.session_state.user_vocab[u] = {"hallo": "bonjour"}
-    return True, "Account succesvol aangemaakt!"
-
+# --- 3. REST VAN DE CODE ---
+# (Plaats hieronder de rest van de functies en de logica...)
 # --- 3. LOGIN SCHERM (DE INGANG) ---
 if not st.session_state.get('ingelogd', False):
     st.title("🔐 Putsie Education - Inloggen")
