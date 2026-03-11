@@ -207,22 +207,19 @@ elif nav == "🇫🇷 Frans Lab":
 if st.sidebar.button("Uitloggen", key="logout"):
     st.session_state.ingelogd = False
     st.rerun()
-# --- PAGINA: 3D DOOLHOF (Onderaan je navigatie) ---
-if nav == "🎮 3D Doolhof":
-    st.title("🎮 Putsie 3D Doolhof")
-    
+# --- ZORG DAT DIT BLOK EXACT ZO IN JE CODE STAAT ---
+elif nav == "🎮 3D Doolhof":
+    st.title("🎮 3D Doolhof")
     maze_html = """
     <div id="game-container" style="width: 100%; height: 500px; background: #000;"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // Simpele Three.js opzet
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/500, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, 800/500, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth * 0.8, 500);
+        renderer.setSize(800, 500);
         document.getElementById('game-container').appendChild(renderer.domElement);
 
-        // Een simpele kubus (jouw doolhofmuur)
         const geometry = new THREE.BoxGeometry();
         const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
         const cube = new THREE.Mesh(geometry, material);
@@ -240,13 +237,3 @@ if nav == "🎮 3D Doolhof":
     </script>
     """
     components.html(maze_html, height=520)
-    # ... jouw bestaande code ...
-
-elif nav == "🇫🇷 Frans Lab":
-    # ... code voor frans lab ...
-
-elif nav == "🎮 3D Doolhof":
-    st.title("🎮 3D Doolhof")
-    components.html(maze_html, height=520)
-
-# ... einde van de code ...
