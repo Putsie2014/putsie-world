@@ -3,10 +3,12 @@ import random
 from openai import OpenAI
 
 # --- CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v2.5"
+SITE_TITLE = "Putsie EDUCATION 🎓 v2.6"
 MODEL_NAAM = "llama-3.1-8b-instant"
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
+
+# De "Coole" achtergrond
 st.markdown("""
 <style>
 [data-testid="stAppViewContainer"] {
@@ -30,108 +32,138 @@ if 'users' not in st.session_state:
         "annelies": {"pw": "JufAnnelies", "role": "teacher"}
     }
 if 'tasks' not in st.session_state: st.session_state.tasks = []
-if 'class_code' not in st.session_state: st.session_state.class_code = "1234"
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 if 'active_task' not in st.session_state: st.session_state.active_task = None
 if 'saldi' not in st.session_state: st.session_state.saldi = {}
-if 'frans_woorden' not in st.session_state:
-    st.session_state.frans_woorden = {"hallo": "bonjour", "bedankt": "merci", "school": "école"}
+if 'frans_woord_nu' not in st.session_state: st.session_state.frans_woord_nu = "hallo"
+
+frans_dict = {"hallo": "bonjour", "bedankt": "merci", "school": "école", "boek": "livre", "brood": "pain"}
 
 # --- AI FUNCTIE ---
-def vraag_groq(vraag, systeem_prompt="Je bent een behulpzame leraar."):
+def vraag_groq(vraag, systeem_prompt="Je bent een leraar."):
     if st.session_state.active_task:
-        return "⚠️ **AI GEBLOKKEERD:** Je bent momenteel bezig aan een taak. Maak je werk eerst af!"
+        return "⚠️ **AI BLOKKADE:** Je bent bezig aan een taak! Maak deze eerst af."
     try:
         response = client.chat.completions.create(
             model=MODEL_NAAM,
             messages=[{"role": "system", "content": systeem_prompt}, {"role": "user", "content": vraag}]
         )
         return response.choices[0].message.content
-    except Exception as e: return f"Error: {e}"
+    except Exception as e: return f"AI Error: {e}"
 
 # --- LOGIN SCHERM ---
 if not st.session_state.ingelogd:
-    st.title(f"🔐 Login - {SITE_TITLE}")
+    st.title(f"🔐 {SITE_TITLE}")
     tab1, tab2 = st.tabs(["🚀 Inloggen", "📝 Registreren"])
+    
     with tab1:
-        u = st.text_input("Naam").lower().strip()
-        p = st.text_input("Wachtwoord", type="password")
-        if st.button("Login"):
+        u = st.text_input("Gebruikersnaam", key="login_user").lower().strip()
+        p = st.text_input("Wachtwoord", type="password", key="login_pw")
+        if st.button("Log in", key="login_btn"):
             if u in st.session_state.users:
-                user_data = st.session_state.users[u]
-                wachtwoord = user_data["pw"] if isinstance(user_data, dict) else user_data
-                if wachtwoord == p:
+                u_data = st.session_state.users[u]
+                correct_pw = u_data["pw"] if isinstance(u_data, dict) else u_data
+                if correct_pw == p:
                     st.session_state.ingelogd = True
                     st.session_state.username = u
-                    st.session_state.role = user_data.get("role", "student") if isinstance(user_data, dict) else "student"
+                    st.session_state.role = u_data.get("role", "student") if isinstance(u_data, dict) else "student"
                     st.rerun()
-                else: st.error("Fout wachtwoord.")
+                else: st.error("Wachtwoord onjuist.")
             else: st.error("Gebruiker niet gevonden.")
         
-        with st.expander("🛠️ Systeembeheer"):
-            reset_code = st.text_input("Reset code:", type="password")
-            if st.button("RESET DATABASE"):
-                if reset_code == "Putsie":
-                    st.session_state.users = {"elliot": {"pw": "Putsie", "role": "teacher"}, "annelies": {"pw": "JufAnnelies", "role": "teacher"}}
+        with st.expander("🛠️ Systeemherstel"):
+            rc = st.text_input("Reset code", type="password", key="reset_code")
+            if st.button("Hard Reset", key="reset_btn"):
+                if rc == "Putsie":
+                    st.session_state.users = {
+                        "elliot": {"pw": "Putsie", "role": "teacher"},
+                        "annelies": {"pw": "JufAnnelies", "role": "teacher"}
+                    }
                     st.session_state.tasks = []
                     st.rerun()
+
     with tab2:
-        nu = st.text_input("Nieuwe Naam").lower().strip()
-        np = st.text_input("Wachtwoord", type="password")
-        if st.button("Registreren"):
-            if nu and np and nu not in st.session_state.users:
-                st.session_state.users[nu] = {"pw": np, "role": "student"}
-                st.session_state.saldi[nu] = 0
-                st.success("Account gemaakt!")
+        nu = st.text_input("Kies een Naam", key="reg_user").lower().strip()
+        np = st.text_input("Kies een Wachtwoord", type="password", key="reg_pw")
+        code = st.text_input("Klascode (1234)", key="reg_code")
+        if st.button("Account Aanmaken", key="reg_btn"):
+            if code == "1234":
+                if nu and np and nu not in st.session_state.users:
+                    st.session_state.users[nu] = {"pw": np, "role": "student"}
+                    st.session_state.saldi[nu] = 0
+                    st.success("Gelukt! Je kunt nu inloggen.")
+                else: st.error("Naam bezet of leeg.")
+            else: st.error("Klascode onjuist!")
     st.stop()
 
-# --- HOOFD MENU ---
-st.sidebar.title(f"👋 {st.session_state.username.capitalize()}")
-menu = ["🏫 De Klas", "🤖 AI Hulp", "🇫🇷 Frans Lab"]
-if st.session_state.role == "teacher": menu.append("🛠️ Admin Paneel")
-nav = st.sidebar.radio("Menu:", menu)
+# --- INTERFACE ---
+st.sidebar.title(f"Welkom, {st.session_state.username.capitalize()}!")
+opts = ["🏫 De Klas", "🤖 AI Hulp", "🇫🇷 Frans Lab"]
+if st.session_state.role == "teacher": opts.append("🛠️ Admin Paneel")
+nav = st.sidebar.radio("Navigatie", opts)
 
-# --- PAGINA'S ---
+# --- DE KLAS ---
 if nav == "🏫 De Klas":
     st.title("🏫 De Klas")
     if st.session_state.role == "teacher":
-        st.subheader("👨‍🏫 Taak Beheer")
-        t_naam = st.text_input("Taak naam")
-        t_inhoud = st.text_area("Opgave")
-        if st.button("📢 Taak Uitdelen"):
-            st.session_state.tasks.append({"name": t_naam, "content": t_inhoud})
-    else:
-        for i, task in enumerate(st.session_state.tasks):
-            if st.button(f"Start Taak: {task['name']}"):
-                st.session_state.active_task = task
-                st.rerun()
-        if st.session_state.active_task:
-            st.warning(f"⚠️ TAAK: {st.session_state.active_task['content']}")
-            if st.button("Taak Inleveren"):
-                st.session_state.active_task = None
-                st.rerun()
+        st.subheader("👨‍🏫 Taak Toevoegen")
+        t_n = st.text_input("Naam van taak")
+        t_i = st.text_area("Wat moeten ze doen?")
+        if st.button("Verstuur naar Klas"):
+            st.session_state.tasks.append({"name": t_n, "content": t_i})
+            st.success("Taak geplaatst!")
+    
+    st.subheader("Beschikbare Taken")
+    if not st.session_state.tasks: st.write("Geen taken momenteel.")
+    for i, t in enumerate(st.session_state.tasks):
+        if st.button(f"Start: {t['name']}", key=f"task_{i}"):
+            st.session_state.active_task = t
+            st.rerun()
 
+    if st.session_state.active_task:
+        st.error(f"📍 BEZIG MET TAAK: {st.session_state.active_task['name']}")
+        st.info(st.session_state.active_task['content'])
+        if st.button("Klaar! (Lever in)", key="finish_task"):
+            st.session_state.active_task = None
+            st.success("Taak ingediend!")
+            st.rerun()
+
+# --- AI HULP ---
 elif nav == "🤖 AI Hulp":
-    v = st.text_area("Vraag aan de AI:")
-    if st.button("Verstuur"):
-        st.write(vraag_groq(v))
+    st.title("🤖 AI Studiehulp")
+    vraag = st.text_area("Stel je vraag over school:")
+    if st.button("Vraag het"):
+        with st.spinner("AI denkt na..."):
+            st.write(vraag_groq(vraag))
 
+# --- FRANS LAB ---
 elif nav == "🇫🇷 Frans Lab":
     st.title("🇫🇷 Frans Lab")
-    w = random.choice(list(st.session_state.frans_woorden.keys()))
-    st.write(f"Vertaal: {w}")
-    ans = st.text_input("Antwoord:")
-    if st.button("Controleer"):
-        st.write("Correct!" if ans == st.session_state.frans_woorden[w] else "Fout.")
+    if st.button("Nieuw Woord", key="new_fr"):
+        st.session_state.frans_woord_nu = random.choice(list(frans_dict.keys()))
+        st.rerun()
+    
+    st.subheader(f"Vertaal: **{st.session_state.frans_woord_nu}**")
+    p_ans = st.text_input("Jouw vertaling:", key="ans_fr").lower().strip()
+    if st.button("Check", key="check_fr"):
+        if p_ans == frans_dict[st.session_state.frans_woord_nu]:
+            st.success("Helemaal goed! +5 munten.")
+            st.session_state.saldi[st.session_state.username] = st.session_state.saldi.get(st.session_state.username, 0) + 5
+        else:
+            st.error(f"Helaas! Het was: {frans_dict[st.session_state.frans_woord_nu]}")
 
+# --- ADMIN ---
 elif nav == "🛠️ Admin Paneel":
-    st.title("🛠️ Admin")
-    for u in st.session_state.users:
-        if u != "elliot" and u != "annelies":
-            if st.button(f"Verwijder {u}"):
-                del st.session_state.users[u]
+    st.title("🛠️ Beheer")
+    for speler in list(st.session_state.users.keys()):
+        if st.session_state.users[speler].get("role") != "teacher":
+            col1, col2, col3 = st.columns(3)
+            col1.write(f"👤 {speler}")
+            col2.write(f"💰 {st.session_state.saldi.get(speler, 0)}")
+            if col3.button(f"Verwijder {speler}", key=f"del_{speler}"):
+                del st.session_state.users[speler]
                 st.rerun()
 
-if st.sidebar.button("Log uit"):
+if st.sidebar.button("Uitloggen", key="logout"):
     st.session_state.ingelogd = False
     st.rerun()
