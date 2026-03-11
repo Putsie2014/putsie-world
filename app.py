@@ -104,7 +104,8 @@ if not st.session_state.ingelogd:
 st.sidebar.title(f"👋 {st.session_state.username.capitalize()}")
 st.sidebar.info(f"Klas: **{st.session_state.class_name}**\nCode: **{st.session_state.class_code}**")
 
-opts = ["🏫 De Klas", "🤖 AI Hulp", "🇫🇷 Frans Lab"]
+# Zoek deze regel en voeg '🎮 3D Doolhof' toe:
+opts = ["🏫 De Klas", "🤖 AI Hulp", "🇫🇷 Frans Lab", "🎮 3D Doolhof"]
 if st.session_state.role in ["teacher", "admin"]:
     opts.append("📚 Leraar Paneel")
 if st.session_state.username == "elliot":
@@ -239,3 +240,13 @@ if nav == "🎮 3D Doolhof":
     </script>
     """
     components.html(maze_html, height=520)
+    # ... jouw bestaande code ...
+
+elif nav == "🇫🇷 Frans Lab":
+    # ... code voor frans lab ...
+
+elif nav == "🎮 3D Doolhof":
+    st.title("🎮 3D Doolhof")
+    components.html(maze_html, height=520)
+
+# ... einde van de code ...
