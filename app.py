@@ -4,7 +4,7 @@ from openai import OpenAI
 import streamlit.components.v1 as components
 
 # --- CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v3.1 FULL"
+SITE_TITLE = "Putsie EDUCATION"
 MODEL_NAAM = "llama-3.1-8b-instant"
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
