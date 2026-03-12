@@ -76,8 +76,8 @@ if 'huidig_oefenwoord' not in st.session_state: st.session_state.huidig_oefenwoo
 
 # --- 3. LOGIN SYSTEEM ---
 if not st.session_state.ingelogd:
-    st.title(f"🔐 {SITE_TITLE}")
-    t1, t2 = st.tabs(["Inloggen", "Nieuw Account"])
+    st.title(f" {SITE_TITLE}")
+    t1, t2 = st.tabs(["Aanmelden", ""])
     
     with t1:
         u_in = st.text_input("Naam").lower().strip()
@@ -165,7 +165,7 @@ if nav == "🏫 De Klas":
                     sla_db_op()
                     st.toast("Toegevoegd aan Frans Lab!")
 
-elif nav == "💬 Chat":
+elif nav == "💬 SchoolChat":
     st.title("💬 Groepschat")
     chat_box = st.container(height=450, border=True)
     with chat_box:
