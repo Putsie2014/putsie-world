@@ -70,7 +70,7 @@ if not st.session_state.ingelogd:
         st.markdown(f"<h1 style='text-align: center;'>{SITE_TITLE}</h1>", unsafe_allow_html=True)
         st.write("---")
         
-        t1, t2 = st.tabs(["🔑 Inloggen", "📝 Nieuw Account"])
+        t1, t2 = st.tabs(["🔑 Inloggen", "📝 Registreren"])
         
         with t1:
             u_in = st.text_input("Naam").lower().strip()
@@ -82,7 +82,7 @@ if not st.session_state.ingelogd:
                     st.session_state.role = st.session_state.db['users'][u_in]["role"]
                     st.rerun()
                 else:
-                    st.error("❌ Naam of wachtwoord onjuist.")
+                    st.error("❌ Naam of wachtwoord fout.")
                     
         with t2:
             nu = st.text_input("Kies Gebruikersnaam").lower().strip()
@@ -98,9 +98,9 @@ if not st.session_state.ingelogd:
                         st.session_state.db['user_vocab'][nu] = {}
                         # SLA DIRECT OP NAAR DE HARDE SCHIJF!
                         sla_db_op() 
-                        st.success("✅ Account direct opgeslagen! Je kunt nu inloggen via de andere tab.")
+                        st.success("✅ Account opgeslagen, Je kunt nu inloggen via inloggen.")
                     else: st.error("⚠️ Naam is al bezet of leeg.")
-                else: st.error("⛔ Klascode is niet geldig.")
+                else: st.error("⛔ Klascode is ongeldig")
     st.stop()
 
 # --- 4. RECHTEN & LOCKDOWN ---
@@ -112,8 +112,8 @@ if st.session_state.db['lockdown'] and not is_admin:
     st.markdown(f"""
         <style>[data-testid="stSidebar"] {{display: none;}}</style>
         <div style="text-align:center; padding:80px; background-color:#ff4b4b; border-radius:15px; color:white; margin-top:50px;">
-            <h1 style="font-size:80px; margin:0;">🚫</h1>
-            <h1 style="margin:0;">Systeem in Lockdown</h1>
+            <h1 style="font-size:80px; margin:0;">Fout!</h1>
+            <h1 style="margin:Systeem is in lockown</h1>
             <p style="font-size:22px;">{st.session_state.db['lockdown_msg']}</p>
         </div>
     """, unsafe_allow_html=True)
@@ -123,14 +123,14 @@ if st.session_state.db['lockdown'] and not is_admin:
     st.stop()
 
 # --- 5. SIDEBAR ---
-st.sidebar.markdown(f"## 👋 Welkom, **{mijn_naam.capitalize()}**")
+st.sidebar.markdown(f"## 👋Welkom, **{mijn_naam.capitalize()}** bij Putsie Education ")
 st.sidebar.write("---")
 c1, c2 = st.sidebar.columns(2)
-c1.metric("💰 Munten", st.session_state.db['saldi'].get(mijn_naam, 0))
-c2.metric("💎 AI Pt", st.session_state.db['ai_points'].get(mijn_naam, 0))
+c1.metric("💰 Geld", st.session_state.db['saldi'].get(mijn_naam, 0))
+c2.metric("💎 AI Punten", st.session_state.db['ai_points'].get(mijn_naam, 0))
 st.sidebar.write("---")
 
-menu = ["🏫 De Klas", "💬 Klas Chat", "🤖 AI Studiehulp", "🇫🇷 Frans Lab"]
+menu = ["🏫 De Klas", "💬 Klas Chat", "AI Hulp", "🇫🇷 Frans Lab"]
 if is_teacher: menu.append("👩‍🏫 Leraar Paneel")
 if is_admin: menu.append("👑 Admin Panel")
 
@@ -150,20 +150,20 @@ if nav == "🏫 De Klas":
     with col1:
         st.subheader("📝 Jouw Taken")
         if not st.session_state.db['tasks']: 
-            st.info("🎉 Je bent helemaal vrij! Geen huiswerk vandaag.")
+            st.info("🎉 Je bent helemaal vrij! Geen huiswerk vandaag, ga buiten spelen ⚽️")
         for t in st.session_state.db['tasks']:
             with st.container(border=True):
                 st.markdown(f"#### 📌 {t['title']}")
                 st.write(t['desc'])
                 
     with col2:
-        st.subheader("📚 Woordenlijsten")
+        st.subheader("📚 WoordenPakketen")
         if not st.session_state.db['vocab_lists']:
             st.info("Geen lijsten gedeeld door de leerkracht.")
         for i, v in enumerate(st.session_state.db['vocab_lists']):
             with st.container(border=True):
                 st.write(f"**📂 {v['title']}** ({len(v['words'])} woorden)")
-                if st.button(f"📥 Download naar mijn Lab", key=f"dl_{i}", use_container_width=True):
+                if st.button(f"📥 Download naar mijn Labo", key=f"dl_{i}", use_container_width=True):
                     if mijn_naam not in st.session_state.db['user_vocab']: st.session_state.db['user_vocab'][mijn_naam] = {}
                     st.session_state.db['user_vocab'][mijn_naam].update(v['words'])
                     sla_db_op()
@@ -171,7 +171,7 @@ if nav == "🏫 De Klas":
 
 elif nav == "💬 Klas Chat":
     st.title("💬 Klas Chat")
-    st.markdown("Praat met je klasgenoten!")
+    st.markdown("Praat met je klas")
     
     chat_box = st.container(height=500, border=True)
     with chat_box:
@@ -190,7 +190,7 @@ elif nav == "🇫🇷 Frans Lab":
     st.title("🇫🇷 Frans Lab")
     mijn_w = st.session_state.db['user_vocab'].get(mijn_naam, {})
     
-    tab1, tab2 = st.tabs(["🎮 Oefenen", "➕ Woorden Toevoegen"])
+    tab1, tab2 = st.tabs([" Oefenen", "➕ Woorden Toevoegen"])
     with tab1:
         if mijn_w:
             with st.container(border=True):
@@ -228,8 +228,8 @@ elif nav == "🇫🇷 Frans Lab":
                 else:
                     st.error("Vul beide velden in!")
 
-elif nav == "🤖 AI Studiehulp":
-    st.title("🤖 AI Studiehulp")
+elif nav == "AI Hulp":
+    st.title("AI hulp")
     st.info(f"Je hebt {st.session_state.db['ai_points'].get(mijn_naam, 0)} AI punten. Elke vraag kost 1 punt.")
     
     vraag = st.text_area("Wat wil je aan de virtuele leraar vragen?")
