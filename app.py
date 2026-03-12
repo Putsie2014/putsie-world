@@ -6,12 +6,11 @@ import json
 import os
 
 # --- 1. CONFIGURATIE ---
-COOLDOWN_SECONDS = 60 
+COOLDOWN_SECONDS = 120
 AI_PUNT_PRIJS = 1000
-SITE_TITLE = "Putsie EDUCATION 🎓"
-MODEL_NAAM = "llama-3.1-8b-instant"
+SITE_TITLE = "Putsie EDUCATION"
+NAAM = "llama-3.1-8b-instant"
 DB_FILE = "database.json"
-
 st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. DE DATABASE MOTOR ---
@@ -51,8 +50,8 @@ if st.session_state.db.get('lockdown') and not is_admin:
             [data-testid="stSidebar"] {display: none;} /* Verberg menu voor leerlingen */
         </style>
         <div style="text-align:center; padding: 50px; background-color: #ff4b4b; color: white; border-radius: 15px; margin-top: 10%;">
-            <h1 style="color: white; font-size: 60px;">🚫 LOCKDOWN ACTIEF</h1>
-            <h2>We zijn tijdelijk gesloten.</h2>
+            <h1 style="color: white; font-size: 60px;">🚫 LOCKDOWN IS ACTIEF</h1>
+            <h2>We zijn bezig met de bug te fixen.</h2>
             <p style="font-size: 20px;"><i>Bericht van admin: {msg}</i></p>
         </div>
     """.replace("{msg}", st.session_state.db.get('lockdown_msg', 'Geen bericht')), unsafe_allow_html=True)
@@ -101,7 +100,7 @@ def roep_ai(vraag):
     u = st.session_state.username
     nu = datetime.now()
     if u in st.session_state.last_ai_call and (nu - st.session_state.last_ai_call[u]).total_seconds() < COOLDOWN_SECONDS:
-        return "⏳ Geduld! De AI leraar rust even uit."
+        return "⏳ Geduld! Je moet even wachten met nog een antwoord te vragen"
     if st.session_state.db["ai_points"].get(u, 0) <= 0: return "❌ Geen AI punten meer!"
     api_key = st.secrets.get("GROQ_API_KEY")
     if not api_key: return "⚠️ Fout: Geen API-sleutel gevonden."
@@ -122,12 +121,12 @@ st.sidebar.title(f"👤 {mijn_naam.capitalize()}")
 # Mooie metrics
 col_s1, col_s2 = st.sidebar.columns(2)
 col_s1.metric("💰 Munten", st.session_state.db['saldi'].get(mijn_naam, 0))
-col_s2.metric("💎 AI Pt", st.session_state.db['ai_points'].get(mijn_naam, 0))
+col_s2.metric("💎 AI Punten", st.session_state.db['ai_points'].get(mijn_naam, 0))
 st.sidebar.divider()
 
 menu = ["🏫 De Klas", "💬 Chat", "🤖 AI Hulp", "🇫🇷 Frans Lab"]
 if st.session_state.role in ["teacher", "admin"]: menu.append("👩‍🏫 Leraar Paneel")
-if is_admin: menu.append("👑 Admin")
+if is_admin: menu.append("👑 Owner Panel")
 nav = st.sidebar.radio("Ga naar:", menu)
 
 st.sidebar.divider()
