@@ -6,23 +6,30 @@ import json
 import os
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v7.1"
+SITE_TITLE = "Putsie EDUCATION 🎓 v7.2"
 MODEL_NAAM = "llama-3.1-8b-instant"
-DB_FILE = "database.json"
 AI_PUNT_PRIJS = 1000
 COOLDOWN_SECONDS = 60
 
+# We forceren het exacte pad naar de map waar dit script staat
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(BASE_DIR, "database.json")
+
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
 
-# --- 2. DATABASE MOTOR ---
+# --- 2. TITANIUM DATABASE MOTOR ---
 def laad_db():
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
-    return {
+        except Exception as e:
+            # Als het bestand stuk is, laat de fout zien!
+            st.error(f"🚨 DATABASE LEES FOUT: {e}") 
+    
+    # Als we hier komen, bestond het bestand niet of was het onleesbaar.
+    # We maken de basis database aan:
+    basis_db = {
         "users": {
             "elliot": {"pw": "Putsie", "role": "admin"},
             "annelies": {"pw": "JufAnnelies", "role": "teacher"}
@@ -37,18 +44,35 @@ def laad_db():
         "lockdown": False,
         "lockdown_msg": "Systeem onderhoud door Elliot"
     }
+    
+    # Sla deze basis DIRECT fysiek op, zodat het bestand vanaf seconde 1 bestaat
+    try:
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(basis_db, f, indent=4)
+    except Exception as e:
+        st.error(f"🚨 KAN DATABASE NIET AANMAKEN: {e}")
+        
+    return basis_db
 
 def sla_db_op():
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(st.session_state.db, f, indent=4)
+    try:
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(st.session_state.db, f, indent=4)
+    except Exception as e:
+        st.error(f"🚨 DATABASE OPSLAG FOUT: {e}")
 
+# Initialiseer de database
 if 'db' not in st.session_state:
     st.session_state.db = laad_db()
 
+# Tijdelijke UI variabelen
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 if 'last_ai_call' not in st.session_state: st.session_state.last_ai_call = {}
 if 'ai_antwoord_temp' not in st.session_state: st.session_state.ai_antwoord_temp = ""
 if 'huidig_oefenwoord' not in st.session_state: st.session_state.huidig_oefenwoord = None
+
+# --- 3. LOGIN SYSTEEM ---
+# (De rest van je code blijft hier exact hetzelfde)
 
 # --- 3. LOGIN SYSTEEM ---
 if not st.session_state.ingelogd:
