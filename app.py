@@ -6,7 +6,7 @@ import json
 import os
 
 # --- 1. CONFIGURATIE & PADEN ---
-SITE_TITLE = "Putsie EDUCATION 🎓 1.01"
+SITE_TITLE = "🌎 Putsie EDUCATION 🎓"
 MODEL_NAAM = "llama-3.1-8b-instant"
 AI_PUNT_PRIJS = 5000
 COOLDOWN_SECONDS = 180
