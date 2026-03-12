@@ -6,10 +6,10 @@ import json
 import os
 
 # --- 1. CONFIGURATIE & PADEN ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v8.0"
+SITE_TITLE = "Putsie EDUCATION 🎓 1.01"
 MODEL_NAAM = "llama-3.1-8b-instant"
-AI_PUNT_PRIJS = 1000
-COOLDOWN_SECONDS = 60
+AI_PUNT_PRIJS = 5000
+COOLDOWN_SECONDS = 180
 
 # Geforceerd pad zodat Streamlit het bestand NOOIT kwijtraakt
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
