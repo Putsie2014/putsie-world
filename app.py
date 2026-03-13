@@ -11,7 +11,7 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v10.0"
+SITE_TITLE = "Putsie EDUCATION 🎓"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
