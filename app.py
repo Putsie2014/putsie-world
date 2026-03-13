@@ -11,17 +11,16 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓"
+SITE_TITLE = "Putsie EDUCATION 🎓 v10.1"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
 AI_PUNT_PRIJS = 1000
 
-# --- 2. STYLING (HET "MOOIE" GEDEELTE) ---
+# --- 2. STYLING ---
 def apply_custom_design():
     st.markdown("""
     <style>
-        /* Achtergrond met animatie */
         .stApp {
             background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
             background-size: 400% 400%;
@@ -32,8 +31,6 @@ def apply_custom_design():
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-
-        /* Vloeiende overgangen voor containers */
         [data-testid="stVerticalBlock"] > div {
             animation: fadeIn 0.8s ease-in-out;
         }
@@ -41,8 +38,6 @@ def apply_custom_design():
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        /* Mooiere kaarten (Glassmorphism) */
         div[data-testid="stExpander"], .stChatMessage, div.element-container div.stMarkdown div {
             background: rgba(255, 255, 255, 0.1) !important;
             backdrop-filter: blur(10px);
@@ -50,8 +45,6 @@ def apply_custom_design():
             border: 1px solid rgba(255, 255, 255, 0.2);
             padding: 10px;
         }
-
-        /* Sidebar styling */
         section[data-testid="stSidebar"] {
             background-color: rgba(0, 0, 0, 0.3) !important;
         }
@@ -61,7 +54,7 @@ def apply_custom_design():
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
 apply_custom_design()
 
-# --- 3. DATABASE ENGINE ---
+# --- 3. DATABASE ENGINE (NU COMPACT!) ---
 def laad_db():
     basis_db = {
         "users": {"elliot": {"pw": "Putsie", "role": "admin"}},
@@ -79,7 +72,6 @@ def laad_db():
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 d = json.load(f)
-                # Zorg dat nieuwe velden altijd bestaan
                 for k in basis_db: 
                     if k not in d: d[k] = basis_db[k]
                 return d
@@ -88,20 +80,17 @@ def laad_db():
 
 def sla_db_op():
     try:
-        # We maken een kopie van de data om deze mooi te formatteren
         schone_db = st.session_state.db.copy()
-        
         with open(DB_FILE, "w", encoding="utf-8") as f:
-            # We schrijven de basis (users, saldi, etc.) op aparte regels, 
-            # maar de inhoud van die blokken heel compact.
+            # Compacte opslag: geen onnodige spaties of enters in het bestand
             json.dump(schone_db, f, separators=(',', ':')) 
-            
-        # Tip: Als je in de tekst-editor van je Admin panel kijkt, 
-        # kun je ook 'indent=2' gebruiken voor een balans tussen leesbaar en compact.
     except Exception as e:
         st.error(f"🚨 Fout bij opslaan: {e}")
 
-# --- 4. LOGIN LOGICA ---
+if 'db' not in st.session_state:
+    st.session_state.db = laad_db()
+
+# --- 4. LOGIN & REGISTRATIE LOGICA (GEFIXT!) ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 
 if not st.session_state.ingelogd:
@@ -109,8 +98,10 @@ if not st.session_state.ingelogd:
     with col2:
         st.title(SITE_TITLE)
         t_log, t_reg = st.tabs(["🔑 Log In", "📝 Nieuw Account"])
+        
         with t_log:
-            u, p = st.text_input("Naam").lower().strip(), st.text_input("Wachtwoord", type="password")
+            u = st.text_input("Naam").lower().strip()
+            p = st.text_input("Wachtwoord", type="password")
             if st.button("Start", type="primary", use_container_width=True):
                 if u == "elliot" and p == "Putsie":
                     st.session_state.ingelogd, st.session_state.username, st.session_state.role = True, "elliot", "admin"
@@ -120,15 +111,28 @@ if not st.session_state.ingelogd:
                     st.session_state.role = st.session_state.db['users'][u]["role"]
                     st.rerun()
                 else: st.error("Inloggegevens fout!")
+                
         with t_reg:
-            nu, np, kc = st.text_input("Naam "), st.text_input("Wachtwoord "), st.text_input("Klascode")
+            # DE FIX: Velden netjes gescheiden en met `.lower().strip()` voor de naam
+            nu = st.text_input("Kies Gebruikersnaam").lower().strip()
+            np = st.text_input("Kies Wachtwoord", type="password")
+            kc = st.text_input("Vul Klascode in")
+            
             if st.button("Account Aanmaken", use_container_width=True):
-                if kc in st.session_state.db['klascodes'] and nu and nu not in st.session_state.db['users']:
+                # Extra checks toegevoegd zodat we niet per ongeluk lege of foute accounts maken
+                if not nu or not np or not kc:
+                    st.error("⚠️ Vul alle velden in!")
+                elif kc not in st.session_state.db['klascodes']:
+                    st.error("⛔ Ongeldige klascode! Vraag de juiste code aan de leraar.")
+                elif nu in st.session_state.db['users']:
+                    st.error("⚠️ Deze naam is al bezet! Kies een andere naam.")
+                else:
                     st.session_state.db['users'][nu] = {"pw": np, "role": "student"}
                     st.session_state.db['saldi'][nu] = 0
                     st.session_state.db['ai_points'][nu] = 5
                     st.session_state.db['user_vocab'][nu] = {}
-                    sla_db_op(); st.success("Welkom! Log nu in.")
+                    sla_db_op()
+                    st.success("✅ Account succesvol aangemaakt! Je kunt nu inloggen via de andere tab.")
     st.stop()
 
 # --- 5. PERMISSIES & LOCKDOWN ---
@@ -164,12 +168,12 @@ if nav == "🤖 AI Hulp":
                     st.session_state.db['saldi'][mijn_naam] -= AI_PUNT_PRIJS
                     st.session_state.db['ai_points'][mijn_naam] += 1
                     sla_db_op(); st.rerun()
+                else: st.error("Te weinig munten!")
     with c1:
         vraag = st.text_area("Stel je vraag aan de AI:")
         if st.button("Vraag stellen (-1 💎)", type="primary"):
             if st.session_state.db['ai_points'].get(mijn_naam, 0) > 0:
                 try:
-                    # GEFIXTE AI LOGICA
                     if "GROQ_API_KEY" not in st.secrets:
                         st.error("GROQ_API_KEY ontbreekt in Secrets!")
                     else:
@@ -252,7 +256,9 @@ elif nav == "👑 Admin":
             st.session_state.db['saldi'][doel] = st.session_state.db['saldi'].get(doel, 0) + aantal
             sla_db_op(); st.success("Gedaan!")
     with t3:
-        raw = st.text_area("RAW JSON", value=json.dumps(st.session_state.db, indent=4), height=300)
+        st.warning("⚠️ RAW Editor: Compact Mode (hier getoond met overzichtelijke opmaak)")
+        # Hier tonen we het met indent=2 zodat JIJ het kunt lezen, maar bij het opslaan wordt het compact gemaakt
+        raw = st.text_area("RAW JSON", value=json.dumps(st.session_state.db, indent=2), height=300)
         if st.button("Database Overschrijven"):
             try: st.session_state.db = json.loads(raw); sla_db_op(); st.rerun()
             except: st.error("JSON Fout!")
