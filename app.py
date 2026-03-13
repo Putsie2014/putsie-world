@@ -11,7 +11,7 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v10.1"
+SITE_TITLE = "Putsie EDUCATION 🎓 v10.2"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -48,13 +48,22 @@ def apply_custom_design():
         section[data-testid="stSidebar"] {
             background-color: rgba(0, 0, 0, 0.3) !important;
         }
+        /* Hacker Terminal Styling */
+        .hacker-term {
+            background-color: black !important;
+            color: #00ff00 !important;
+            font-family: 'Courier New', Courier, monospace !important;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #00ff00;
+        }
     </style>
     """, unsafe_allow_html=True)
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide")
 apply_custom_design()
 
-# --- 3. DATABASE ENGINE (NU COMPACT!) ---
+# --- 3. DATABASE ENGINE (COMPACT) ---
 def laad_db():
     basis_db = {
         "users": {"elliot": {"pw": "Putsie", "role": "admin"}},
@@ -82,15 +91,46 @@ def sla_db_op():
     try:
         schone_db = st.session_state.db.copy()
         with open(DB_FILE, "w", encoding="utf-8") as f:
-            # Compacte opslag: geen onnodige spaties of enters in het bestand
             json.dump(schone_db, f, separators=(',', ':')) 
     except Exception as e:
         st.error(f"🚨 Fout bij opslaan: {e}")
 
-if 'db' not in st.session_state:
-    st.session_state.db = laad_db()
+if 'db' not in st.session_state: st.session_state.db = laad_db()
 
-# --- 4. LOGIN & REGISTRATIE LOGICA (GEFIXT!) ---
+# --- 4. HACKER COMMAND PANEL ---
+if st.session_state.get('in_terminal', False):
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE TERMINAL</h1><p>Welcome, Admin. Enter command:</p></div>", unsafe_allow_html=True)
+    
+    cmd = st.text_input(">", key="cmd_input").strip()
+    
+    if cmd == "/deactivatelockdown":
+        st.session_state.db['lockdown'] = False
+        sla_db_op()
+        st.success("ACCESS GRANTED: Lockdown is nu UIT.")
+    elif cmd == "/activatelockdown":
+        st.session_state.db['lockdown'] = True
+        sla_db_op()
+        st.error("SYSTEM ALERT: Lockdown is nu AAN.")
+    elif cmd.startswith("/openaccount"):
+        delen = cmd.split(" ")
+        if len(delen) > 1:
+            target = delen[1].lower()
+            if target in st.session_state.db['users'] or target == "elliot":
+                st.session_state.ingelogd = True
+                st.session_state.username = target
+                st.session_state.role = st.session_state.db['users'].get(target, {}).get("role", "admin")
+                st.session_state.lockdown_bypass = True # De magische sleutel
+                st.session_state.in_terminal = False
+                st.rerun()
+            else: st.warning("User niet gevonden in database.")
+        else: st.warning("Gebruik: /openaccount [naam]")
+    elif cmd == "/exit":
+        st.session_state.in_terminal = False
+        st.rerun()
+    
+    st.stop() # Zorgt dat de rest van de website niet laadt zolang je in de terminal zit
+
+# --- 5. LOGIN LOGICA ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 
 if not st.session_state.ingelogd:
@@ -103,7 +143,13 @@ if not st.session_state.ingelogd:
             u = st.text_input("Naam").lower().strip()
             p = st.text_input("Wachtwoord", type="password")
             if st.button("Start", type="primary", use_container_width=True):
-                if u == "elliot" and p == "Putsie":
+                
+                # DE GEHEIME TRIGGER VOOR DE TERMINAL
+                if u == "admin2014":
+                    st.session_state.in_terminal = True
+                    st.rerun()
+                    
+                elif u == "elliot" and p == "Putsie":
                     st.session_state.ingelogd, st.session_state.username, st.session_state.role = True, "elliot", "admin"
                     st.rerun()
                 elif u in st.session_state.db['users'] and st.session_state.db['users'][u]["pw"] == p:
@@ -113,49 +159,46 @@ if not st.session_state.ingelogd:
                 else: st.error("Inloggegevens fout!")
                 
         with t_reg:
-            # DE FIX: Velden netjes gescheiden en met `.lower().strip()` voor de naam
             nu = st.text_input("Kies Gebruikersnaam").lower().strip()
             np = st.text_input("Kies Wachtwoord", type="password")
             kc = st.text_input("Vul Klascode in")
-            
             if st.button("Account Aanmaken", use_container_width=True):
-                # Extra checks toegevoegd zodat we niet per ongeluk lege of foute accounts maken
-                if not nu or not np or not kc:
-                    st.error("⚠️ Vul alle velden in!")
-                elif kc not in st.session_state.db['klascodes']:
-                    st.error("⛔ Ongeldige klascode! Vraag de juiste code aan de leraar.")
-                elif nu in st.session_state.db['users']:
-                    st.error("⚠️ Deze naam is al bezet! Kies een andere naam.")
+                if not nu or not np or not kc: st.error("⚠️ Vul alle velden in!")
+                elif kc not in st.session_state.db['klascodes']: st.error("⛔ Ongeldige klascode!")
+                elif nu in st.session_state.db['users']: st.error("⚠️ Deze naam is al bezet!")
                 else:
                     st.session_state.db['users'][nu] = {"pw": np, "role": "student"}
                     st.session_state.db['saldi'][nu] = 0
                     st.session_state.db['ai_points'][nu] = 5
                     st.session_state.db['user_vocab'][nu] = {}
                     sla_db_op()
-                    st.success("✅ Account succesvol aangemaakt! Je kunt nu inloggen via de andere tab.")
+                    st.success("✅ Account succesvol aangemaakt! Log nu in.")
     st.stop()
 
-# --- 5. PERMISSIES & LOCKDOWN ---
+# --- 6. PERMISSIES & LOCKDOWN (MET BYPASS) ---
 mijn_naam = st.session_state.username
 is_admin = mijn_naam == "elliot" or st.session_state.role == "admin"
 is_teacher = is_admin or st.session_state.role == "teacher"
+heeft_bypass = st.session_state.get('lockdown_bypass', False)
 
-if st.session_state.db.get('lockdown') and not is_admin:
-    st.markdown(f"<div style='text-align:center; padding:100px;'><h1>🚫 LOCKDOWN</h1><h3>{st.session_state.db['lockdown_msg']}</h3></div>", unsafe_allow_html=True)
+# Als de lockdown AAN is EN je bent geen admin EN je hebt geen bypass pas...
+if st.session_state.db.get('lockdown') and not is_admin and not heeft_bypass:
+    st.markdown(f"<div style='text-align:center; padding:100px; background: rgba(255,0,0,0.2); border-radius:20px;'><h1>🚫 CRITICAL LOCKDOWN</h1><h3>{st.session_state.db['lockdown_msg']}</h3></div>", unsafe_allow_html=True)
     if st.button("Uitloggen"): st.session_state.ingelogd = False; st.rerun()
     st.stop()
 
-# --- 6. SIDEBAR ---
+# --- 7. SIDEBAR ---
 with st.sidebar:
     st.header(f"👋 {mijn_naam.capitalize()}")
+    if heeft_bypass: st.caption("🕵️ VIP BYPASS ACTIEF")
     st.metric("💰 Munten", st.session_state.db['saldi'].get(mijn_naam, 0))
     st.metric("💎 AI Punten", st.session_state.db['ai_points'].get(mijn_naam, 0))
     st.divider()
     nav = st.radio("Ga naar:", ["🏫 Klas", "💬 Chat", "🇫🇷 Frans Lab", "🤖 AI Hulp", "👩‍🏫 Leraar", "👑 Admin"])
     if st.button("🚪 Uitloggen", use_container_width=True):
-        st.session_state.ingelogd = False; st.rerun()
+        st.session_state.ingelogd = False; st.session_state.lockdown_bypass = False; st.rerun()
 
-# --- 7. PAGINA'S ---
+# --- 8. PAGINA'S (NIETS VERWIJDERD!) ---
 
 if nav == "🤖 AI Hulp":
     st.title("🤖 AI Studiehulp (Llama 3.1)")
@@ -187,8 +230,7 @@ if nav == "🤖 AI Hulp":
                         sla_db_op()
                 except Exception as e: st.error(f"AI Fout: {e}")
             else: st.warning("Te weinig AI punten!")
-        if 'ai_res' in st.session_state:
-            st.info(st.session_state.ai_res)
+        if 'ai_res' in st.session_state: st.info(st.session_state.ai_res)
 
 elif nav == "💬 Chat":
     st.title("💬 Klas Chat")
@@ -257,7 +299,6 @@ elif nav == "👑 Admin":
             sla_db_op(); st.success("Gedaan!")
     with t3:
         st.warning("⚠️ RAW Editor: Compact Mode (hier getoond met overzichtelijke opmaak)")
-        # Hier tonen we het met indent=2 zodat JIJ het kunt lezen, maar bij het opslaan wordt het compact gemaakt
         raw = st.text_area("RAW JSON", value=json.dumps(st.session_state.db, indent=2), height=300)
         if st.button("Database Overschrijven"):
             try: st.session_state.db = json.loads(raw); sla_db_op(); st.rerun()
