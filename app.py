@@ -11,7 +11,7 @@ except ImportError:
     st.error("Let op: 'groq' bibliotheek niet gevonden. Voeg 'groq' toe aan requirements.txt")
 
 # --- 1. CONFIGURATIE & PADEN ---
-SITE_TITLE = "Putsie EDUCATION 🎓 v9.1"
+SITE_TITLE = "Putsie Education"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -107,7 +107,7 @@ if st.session_state.db.get('lockdown', False) and not is_admin:
 with st.sidebar:
     st.header(f"👤 {mijn_naam.capitalize()}")
     c1, c2 = st.columns(2)
-    c1.metric("🪙", st.session_state.db['saldi'].get(mijn_naam, 0))
+    c1.metric("s", st.session_state.db['saldi'].get(mijn_naam, 0))
     c2.metric("💎", st.session_state.db['ai_points'].get(mijn_naam, 0))
     st.divider()
     menu = ["🏫 Klas", "💬 Chat", "🇫🇷 Frans Lab", "🤖 AI Hulp"]
@@ -121,7 +121,7 @@ with st.sidebar:
 
 # --- 6. PAGINA LOGICA ---
 
-if nav == "🤖 AI Hulp":
+if nav == "🤖 AI assistent":
     st.title("🤖 AI Studiehulp")
     col_a, col_b = st.columns([2, 1])
     with col_b:
