@@ -87,11 +87,19 @@ def laad_db():
     return basis_db
 
 def sla_db_op():
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(st.session_state.db, f, indent=4)
-
-if 'db' not in st.session_state:
-    st.session_state.db = laad_db()
+    try:
+        # We maken een kopie van de data om deze mooi te formatteren
+        schone_db = st.session_state.db.copy()
+        
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            # We schrijven de basis (users, saldi, etc.) op aparte regels, 
+            # maar de inhoud van die blokken heel compact.
+            json.dump(schone_db, f, separators=(',', ':')) 
+            
+        # Tip: Als je in de tekst-editor van je Admin panel kijkt, 
+        # kun je ook 'indent=2' gebruiken voor een balans tussen leesbaar en compact.
+    except Exception as e:
+        st.error(f"🚨 Fout bij opslaan: {e}")
 
 # --- 4. LOGIN LOGICA ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
