@@ -107,8 +107,8 @@ if st.session_state.db.get('lockdown', False) and not is_admin:
 with st.sidebar:
     st.header(f"👤 {mijn_naam.capitalize()}")
     c1, c2 = st.columns(2)
-    c1.metric("s", st.session_state.db['saldi'].get(mijn_naam, 0))
-    c2.metric("💎", st.session_state.db['ai_points'].get(mijn_naam, 0))
+    c1.metric("Geld",st.session_state.db['saldi'].get(mijn_naam, 0))
+    c2.metric("AI gems💎", st.session_state.db['ai_points'].get(mijn_naam, 0))
     st.divider()
     menu = ["🏫 Klas", "💬 Chat", "🇫🇷 Frans Lab", "🤖 AI Hulp"]
     if is_teacher: menu.append("👩‍🏫 Leraar")
