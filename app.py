@@ -10,7 +10,7 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🏝️ v14.3"
+SITE_TITLE = "Putsie WORLD 🏝️ v14.4"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -21,7 +21,7 @@ IMG_BASE_URL = "https://raw.githubusercontent.com/JOUW_NAAM/putsie-world/main/as
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. PREMIUM STYLING ---
+# --- 2. PREMIUM STYLING (MET DE SEAMLESS GAME GRID HACK!) ---
 def apply_premium_design():
     st.markdown("""
     <style>
@@ -58,19 +58,36 @@ def apply_premium_design():
         .chat-tag { background: linear-gradient(90deg, #FFD700, #FFA500); color: black; padding: 2px 8px; border-radius: 10px; font-weight: bold; font-size: 12px; margin-right: 5px; }
         .lvl-badge { background: #4CAF50; color: white; padding: 2px 6px; border-radius: 5px; font-size: 11px; margin-right: 5px; }
         
-        /* Island CSS */
-        .island-tile {
-            width: 100%; aspect-ratio: 1/1;
-            border: 2px dashed rgba(255,255,255,0.3);
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 24px;
+        /* ========================================= */
+        /* DE MAGISCHE SEAMLESS GAME GRID CSS HACK   */
+        /* ========================================= */
+        
+        /* Verwijder de ruimte tussen de rijen en kolommen */
+        div[data-testid="stHorizontalBlock"]:has(.game-tile) { gap: 0 !important; padding: 0 !important; }
+        div[data-testid="column"]:has(.game-tile) { padding: 0 !important; margin: 0 !important; position: relative; }
+        div[data-testid="column"]:has(.game-tile) > div[data-testid="stVerticalBlock"] { gap: 0 !important; }
+        
+        /* De Tegels: Strak tegen elkaar, vierkant, geen ronde hoeken */
+        .game-tile {
+            width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 0 !important; padding: 0 !important; font-size: 24px; box-sizing: border-box;
+            border-radius: 0 !important; transition: 0.2s;
         }
-        .island-tile-filled {
-            width: 100%; aspect-ratio: 1/1;
-            border: 2px solid rgba(0, 255, 0, 0.5);
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.15); border-radius: 8px; font-size: 30px;
+        .game-tile:hover { background: rgba(255, 255, 255, 0.2); cursor: pointer; }
+        .game-tile.filled { background: rgba(0, 255, 100, 0.15); border: 1px solid rgba(0, 255, 100, 0.3); font-size: 35px; }
+        
+        /* De truc: Streamlit Knoppen onzichtbaar maken en over de tegel leggen */
+        div[data-testid="column"]:has(.game-tile) div.element-container:has(div[data-testid="stButton"]) {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
         }
+        div[data-testid="column"]:has(.game-tile) div[data-testid="stButton"] {
+            width: 100%; height: 100%; opacity: 0; /* Compleet onzichtbaar, maar werkt wel! */
+        }
+        div[data-testid="column"]:has(.game-tile) div[data-testid="stButton"] button {
+            width: 100%; height: 100%; cursor: pointer;
+        }
+        /* ========================================= */
     </style>
     """, unsafe_allow_html=True)
 
@@ -114,14 +131,14 @@ def sla_db_op():
 
 if 'db' not in st.session_state: st.session_state.db = laad_db()
 
-# --- VEILIGE DATABASE INITIALISATIE (ANTI-CRASH) ---
+# VEILIGE DATABASE INITIALISATIE
 st.session_state.db.setdefault('islands', {})
 st.session_state.db.setdefault('island_levels', {})
 st.session_state.db.setdefault('inventory', {})
 
 # --- 4. HACKER COMMAND PANEL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V14.3</h1><p>Root Access Granted. Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V14.4</h1><p>Root Access Granted. Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown":
         st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
@@ -194,7 +211,7 @@ mijn_saldo = st.session_state.db['saldi'].get(mijn_naam, 0)
 mijn_level = (mijn_saldo // 500) + 1 
 mijn_tag = st.session_state.db.get('chat_tags', {}).get(mijn_naam, "")
 
-# PUTSIE PET LOGICA
+# PUTSIE PET
 if 'putsie_active' not in st.session_state: st.session_state.putsie_active = False
 if 'putsie_mood' not in st.session_state: st.session_state.putsie_mood = "😊"
 if 'putsie_text' not in st.session_state: st.session_state.putsie_text = "Hoi Elliot!"
@@ -250,24 +267,29 @@ if nav == "🏝️ Eiland & Wereld":
         eiland_data = st.session_state.db.setdefault('islands', {}).setdefault(mijn_naam, {})
         inventaris = st.session_state.db.setdefault('inventory', {}).setdefault(mijn_naam, {})
         
-        for r in range(mijn_grid_size):
-            cols = st.columns(mijn_grid_size)
-            for c in range(mijn_grid_size):
-                pos = f"{r},{c}"
-                with cols[c]:
-                    if pos in eiland_data:
-                        item_naam = eiland_data[pos]
-                        emoji = SHOP_ITEMS.get(item_naam, {}).get('emoji', '❓')
-                        st.markdown(f"<div class='island-tile-filled' title='Klik om te verwijderen'>{emoji}</div>", unsafe_allow_html=True)
-                        if st.button("Opbergen", key=f"remove_{pos}"):
-                            inventaris[item_naam] = inventaris.get(item_naam, 0) + 1
-                            del eiland_data[pos]
-                            sla_db_op(); st.rerun()
-                    else:
-                        st.markdown("<div class='island-tile'>+</div>", unsafe_allow_html=True)
-                        if st.button("Bouw", key=f"build_{pos}"):
-                            st.session_state.build_pos = pos
-                            st.rerun()
+        # Grid Gecentreerd voor een mooiere look
+        _, col_grid, _ = st.columns([1, 2, 1])
+        with col_grid:
+            for r in range(mijn_grid_size):
+                # Gap="small" zorgt dat de CSS het makkelijk kan overschrijven naar 0
+                cols = st.columns(mijn_grid_size, gap="small")
+                for c in range(mijn_grid_size):
+                    pos = f"{r},{c}"
+                    with cols[c]:
+                        if pos in eiland_data:
+                            item_naam = eiland_data[pos]
+                            emoji = SHOP_ITEMS.get(item_naam, {}).get('emoji', '❓')
+                            # De magische onzichtbare knop overlapt de game-tile
+                            st.markdown(f"<div class='game-tile filled' title='Opbergen'>{emoji}</div>", unsafe_allow_html=True)
+                            if st.button("x", key=f"rm_{pos}"): 
+                                inventaris[item_naam] = inventaris.get(item_naam, 0) + 1
+                                del eiland_data[pos]
+                                sla_db_op(); st.rerun()
+                        else:
+                            st.markdown("<div class='game-tile' title='Bouwen'>➕</div>", unsafe_allow_html=True)
+                            if st.button("x", key=f"build_{pos}"):
+                                st.session_state.build_pos = pos
+                                st.rerun()
                             
         if 'build_pos' in st.session_state:
             st.divider()
@@ -324,16 +346,18 @@ if nav == "🏝️ Eiland & Wereld":
             st.divider()
             st.subheader(f"Je bezoekt: {target.capitalize()} ({t_size}x{t_size})")
             
-            for r in range(t_size):
-                cols = st.columns(t_size)
-                for c in range(t_size):
-                    pos = f"{r},{c}"
-                    with cols[c]:
-                        if pos in t_data:
-                            item_naam = t_data[pos]
-                            st.markdown(f"<div class='island-tile-filled'>{SHOP_ITEMS.get(item_naam, {}).get('emoji', '❓')}</div>", unsafe_allow_html=True)
-                        else:
-                            st.markdown("<div class='island-tile'></div>", unsafe_allow_html=True)
+            _, col_visitor, _ = st.columns([1, 2, 1])
+            with col_visitor:
+                for r in range(t_size):
+                    cols = st.columns(t_size, gap="small")
+                    for c in range(t_size):
+                        pos = f"{r},{c}"
+                        with cols[c]:
+                            if pos in t_data:
+                                item_naam = t_data[pos]
+                                st.markdown(f"<div class='game-tile filled'>{SHOP_ITEMS.get(item_naam, {}).get('emoji', '❓')}</div>", unsafe_allow_html=True)
+                            else:
+                                st.markdown("<div class='game-tile'></div>", unsafe_allow_html=True)
                             
             if st.button("Terug naar Wereldkaart"): del st.session_state.visitor_target; st.rerun()
 
