@@ -10,7 +10,7 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 💎 v12.0"
+SITE_TITLE = "Putsie EDUCATION 💎 v12.1"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -57,7 +57,7 @@ def apply_premium_design():
 
 apply_premium_design()
 
-# --- 3. DATABASE ENGINE (CLEAN SLATE & BULLETPROOF) ---
+# --- 3. DATABASE ENGINE ---
 def laad_db():
     basis_db = {
         "users": {"elliot": {"pw": "Putsie", "role": "admin"}},
@@ -66,9 +66,9 @@ def laad_db():
         "user_vocab": {},
         "chat_messages": [],
         "vocab_lists": [],
-        "tasks": [], # Taken zijn nu interactief
-        "completed_tasks": {}, # Houdt bij wie welke taak af heeft
-        "klascodes": {"ADMIN-000": "elliot"}, # Standaard code zodat 1e student erin kan
+        "tasks": [], 
+        "completed_tasks": {}, 
+        "klascodes": {"ADMIN-000": "elliot"}, 
         "teacher_classes": {},
         "lockdown": False,
         "lockdown_msg": "Systeem onderhoud door Elliot"
@@ -93,7 +93,7 @@ if 'db' not in st.session_state: st.session_state.db = laad_db()
 
 # --- 4. HACKER COMMAND PANEL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V12.0</h1><p>Root Access Granted.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V12.1</h1><p>Root Access Granted.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown":
         st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
@@ -162,7 +162,7 @@ if st.session_state.db.get('lockdown') and not is_admin and not st.session_state
 
 # --- FUN FEATURE: LEVEL SYSTEEM ---
 mijn_saldo = st.session_state.db['saldi'].get(mijn_naam, 0)
-mijn_level = (mijn_saldo // 500) + 1 # 1 level per 500 munten
+mijn_level = (mijn_saldo // 500) + 1 
 
 # --- 7. SIDEBAR ---
 with st.sidebar:
@@ -233,10 +233,9 @@ elif nav == "🇫🇷 Frans Lab":
 elif nav == "🏫 Klas":
     st.title("🏫 Klaslokaal")
     
-    # --- DE NIEUWE INTERACTIEVE TAKEN MODULE ---
     if 'active_task' not in st.session_state:
-        # Check of er ongeopende taken of lijsten zijn
-        beschikbare_taken = [t for t in st.session_state.db['tasks'] if t['id'] not in st.session_state.db.get('completed_tasks', {}).get(mijn_naam, [])]
+        # Veilige Bugfix: Fallback naar t.get('title') als er geen 'id' is
+        beschikbare_taken = [t for t in st.session_state.db['tasks'] if t.get('id', t.get('title')) not in st.session_state.db.get('completed_tasks', {}).get(mijn_naam, [])]
         
         c1, c2 = st.columns(2)
         with c1:
@@ -244,13 +243,20 @@ elif nav == "🏫 Klas":
                 st.subheader("📋 Jouw Huiswerk")
                 for t in beschikbare_taken:
                     with st.container(border=True):
-                        st.write(f"**{t['title']}** ({len(t['words'])} woorden)")
-                        if st.button("Start Taak", key=f"btn_{t['id']}", type="primary"):
-                            st.session_state.active_task = t
-                            st.session_state.task_words = list(t['words'].keys()) # Lijst van woorden die nog moeten
-                            st.rerun()
+                        # Controleer of het een nieuwe of oude taak is
+                        if 'words' in t:
+                            st.write(f"**{t.get('title', 'Taak')}** ({len(t['words'])} woorden)")
+                            if st.button("Start Taak", key=f"btn_{t.get('id')}", type="primary"):
+                                st.session_state.active_task = t
+                                st.session_state.task_words = list(t['words'].keys())
+                                st.rerun()
+                        else:
+                            st.write(f"**{t.get('title', 'Oude Taak')}**\n\n{t.get('desc', '')}")
+                            if st.button("Markeer als Gelezen", key=f"read_{t.get('title')}"):
+                                st.session_state.db.setdefault('completed_tasks', {}).setdefault(mijn_naam, []).append(t.get('title'))
+                                sla_db_op(); st.rerun()
             elif not st.session_state.db['tasks']:
-                pass # Geen random leeg vakje
+                pass
             else:
                 st.success("Je hebt al je taken af! Goed bezig!")
 
@@ -262,7 +268,6 @@ elif nav == "🏫 Klas":
                         st.session_state.db['user_vocab'].setdefault(mijn_naam, {}).update(v['words'])
                         sla_db_op(); st.toast("Toegevoegd!", icon="📚")
     
-    # --- DE ACTIEVE TAAK MINI-GAME ---
     else:
         t = st.session_state.active_task
         nog_te_doen = len(st.session_state.task_words)
@@ -280,13 +285,12 @@ elif nav == "🏫 Klas":
             if st.button("Controleer Woord", type="primary"):
                 if ans.lower().strip() == t['words'][huidig_woord].lower().strip():
                     st.toast("Correct!", icon="✅")
-                    st.session_state.task_words.pop(0) # Verwijder woord uit de 'te doen' lijst
+                    st.session_state.task_words.pop(0)
                     st.rerun()
                 else:
                     st.error("Dat is niet juist. Probeer het opnieuw!")
         else:
-            # Als de lijst leeg is, is de taak af!
-            st.balloons() # Leuke bonus animatie!
+            st.balloons()
             st.success("🎉 Taak Voltooid! Je hebt een bonus van 100 munten verdiend!")
             st.session_state.db['saldi'][mijn_naam] = st.session_state.db['saldi'].get(mijn_naam, 0) + 100
             st.session_state.db.setdefault('completed_tasks', {}).setdefault(mijn_naam, []).append(t['id'])
@@ -309,7 +313,7 @@ elif nav == "👩‍🏫 Leraar Paneel":
         if st.button("Post Taak naar Klas", type="primary"):
             if tt and tw:
                 d = {l.split("=")[0].strip(): l.split("=")[1].strip() for l in tw.split("\n") if "=" in l}
-                task_id = str(random.randint(10000, 99999)) # Unieke ID voor de taak
+                task_id = str(random.randint(10000, 99999))
                 st.session_state.db['tasks'].append({"id": task_id, "title": tt, "words": d})
                 sla_db_op(); st.toast("Interactieve taak geplaatst!", icon="🚀"); st.rerun()
             else: st.warning("Vul titel en woorden in.")
@@ -332,7 +336,6 @@ elif nav == "👑 Admin Room":
         if studenten:
             doel_leraar = st.selectbox("Selecteer Student", studenten)
             if st.button("Maak Leraar", type="primary"):
-                # Genereer een vette, random klascode
                 nieuwe_code = f"KLAS-{random.randint(1000, 9999)}"
                 st.session_state.db['users'][doel_leraar]['role'] = "teacher"
                 st.session_state.db['klascodes'][nieuwe_code] = f"Klas van {doel_leraar}"
