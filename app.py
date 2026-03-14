@@ -10,7 +10,7 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 💎 v13.0"
+SITE_TITLE = "Putsie EDUCATION 💎 v13.1"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -72,9 +72,9 @@ def laad_db():
         "completed_tasks": {}, 
         "klascodes": {"ADMIN-000": "elliot"}, 
         "teacher_classes": {},
-        "chat_tags": {}, # NIEUW: Houdt bij wie welke tag heeft
-        "custom_tags": ["👑 ADMIN", "⭐ VIP", "🔥 STRIJDER"], # NIEUW: Lijst met beschikbare tags
-        "daily_claims": {}, # NIEUW: Houdt bij wie zijn dagelijkse bonus al heeft
+        "chat_tags": {}, 
+        "custom_tags": ["👑 ADMIN", "⭐ VIP", "🔥 STRIJDER"], 
+        "daily_claims": {}, 
         "lockdown": False,
         "lockdown_msg": "Systeem onderhoud door Elliot"
     }
@@ -96,17 +96,9 @@ def sla_db_op():
 
 if 'db' not in st.session_state: st.session_state.db = laad_db()
 
-# Herlaad db functie voor de auto-refresh fragmenten
-def sync_db_from_file():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                st.session_state.db = json.load(f)
-        except: pass
-
 # --- 4. HACKER COMMAND PANEL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V13.0</h1><p>Root Access Granted.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V13.1</h1><p>Root Access Granted.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown":
         st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
@@ -180,7 +172,6 @@ mijn_tag = st.session_state.db.get('chat_tags', {}).get(mijn_naam, "")
 
 # --- 7. SIDEBAR (MET DAGELIJKSE BONUS) ---
 with st.sidebar:
-    # Tag en Level weergave
     tag_html = f"<span class='chat-tag'>{mijn_tag}</span>" if mijn_tag else ""
     st.markdown(f"<h3>👋 {tag_html}{mijn_naam.capitalize()}</h3>", unsafe_allow_html=True)
     st.caption(f"⭐ Speler Level: {mijn_level}")
@@ -189,7 +180,7 @@ with st.sidebar:
     col_s1.metric("💰 Munten", mijn_saldo)
     col_s2.metric("💎 AI Punten", st.session_state.db['ai_points'].get(mijn_naam, 0))
     
-    # NIEUW: Dagelijkse Bonus
+    # Dagelijkse Bonus
     vandaag = datetime.now().strftime("%Y-%m-%d")
     laatste_claim = st.session_state.db.get('daily_claims', {}).get(mijn_naam, "")
     if laatste_claim != vandaag:
@@ -241,24 +232,19 @@ if nav == "🤖 AI Hulp":
 elif nav == "💬 Chat":
     st.title("💬 Klas Chat")
     
-    # LIVE AUTO-REFRESH FRAGMENT VOOR CHAT (Verstoort typen niet!)
-    @st.experimental_fragment(run_every=3)
-    def live_chat():
-        sync_db_from_file() # Haal nieuwste berichten op
-        with st.container(height=450, border=True):
-            for m in st.session_state.db['chat_messages']:
-                u = m['user']
-                u_saldo = st.session_state.db['saldi'].get(u, 0)
-                u_lvl = (u_saldo // 500) + 1
-                u_tag = st.session_state.db.get('chat_tags', {}).get(u, "")
-                
-                tag_html = f"<span class='chat-tag'>{u_tag}</span>" if u_tag else ""
-                lvl_html = f"<span class='lvl-badge'>Lvl {u_lvl}</span>"
-                
-                st.markdown(f"{lvl_html}{tag_html}**{u.capitalize()}**: {m['text']}", unsafe_allow_html=True)
-                
-    live_chat()
-    
+    # Stabiele weergave zonder experimentele code
+    with st.container(height=450, border=True):
+        for m in st.session_state.db['chat_messages']:
+            u = m['user']
+            u_saldo = st.session_state.db['saldi'].get(u, 0)
+            u_lvl = (u_saldo // 500) + 1
+            u_tag = st.session_state.db.get('chat_tags', {}).get(u, "")
+            
+            tag_html = f"<span class='chat-tag'>{u_tag}</span>" if u_tag else ""
+            lvl_html = f"<span class='lvl-badge'>Lvl {u_lvl}</span>"
+            
+            st.markdown(f"{lvl_html}{tag_html}**{u.capitalize()}**: {m['text']}", unsafe_allow_html=True)
+            
     if p := st.chat_input("Typ iets..."):
         st.session_state.db['chat_messages'].append({"user": mijn_naam, "text": p}); sla_db_op(); st.rerun()
 
@@ -280,40 +266,35 @@ elif nav == "🏫 Klas":
     st.title("🏫 Klaslokaal")
     
     if 'active_task' not in st.session_state:
-        # LIVE AUTO-REFRESH FRAGMENT VOOR TAKEN
-        @st.experimental_fragment(run_every=3)
-        def live_taken():
-            sync_db_from_file()
-            beschikbare_taken = [t for t in st.session_state.db['tasks'] if t.get('id', t.get('title')) not in st.session_state.db.get('completed_tasks', {}).get(mijn_naam, [])]
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                if beschikbare_taken:
-                    st.subheader("📋 Jouw Huiswerk")
-                    for t in beschikbare_taken:
-                        with st.container(border=True):
-                            if 'words' in t:
-                                st.write(f"**{t.get('title', 'Taak')}** ({len(t['words'])} woorden)")
-                                if st.button("Start Taak", key=f"btn_{t.get('id')}", type="primary"):
-                                    st.session_state.active_task = t
-                                    st.session_state.task_words = list(t['words'].keys())
-                                    st.rerun()
-                            else:
-                                st.write(f"**{t.get('title', 'Oude Taak')}**\n\n{t.get('desc', '')}")
-                                if st.button("Markeer als Gelezen", key=f"read_{t.get('title')}"):
-                                    st.session_state.db.setdefault('completed_tasks', {}).setdefault(mijn_naam, []).append(t.get('title'))
-                                    sla_db_op(); st.rerun()
-                elif st.session_state.db['tasks']:
-                    st.success("Je hebt al je taken af! Goed bezig!")
+        beschikbare_taken = [t for t in st.session_state.db['tasks'] if t.get('id', t.get('title')) not in st.session_state.db.get('completed_tasks', {}).get(mijn_naam, [])]
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            if beschikbare_taken:
+                st.subheader("📋 Jouw Huiswerk")
+                for t in beschikbare_taken:
+                    with st.container(border=True):
+                        if 'words' in t:
+                            st.write(f"**{t.get('title', 'Taak')}** ({len(t['words'])} woorden)")
+                            if st.button("Start Taak", key=f"btn_{t.get('id')}", type="primary"):
+                                st.session_state.active_task = t
+                                st.session_state.task_words = list(t['words'].keys())
+                                st.rerun()
+                        else:
+                            st.write(f"**{t.get('title', 'Oude Taak')}**\n\n{t.get('desc', '')}")
+                            if st.button("Markeer als Gelezen", key=f"read_{t.get('title')}"):
+                                st.session_state.db.setdefault('completed_tasks', {}).setdefault(mijn_naam, []).append(t.get('title'))
+                                sla_db_op(); st.rerun()
+            elif st.session_state.db['tasks']:
+                st.success("Je hebt al je taken af! Goed bezig!")
 
-            with c2:
-                if st.session_state.db['vocab_lists']:
-                    st.subheader("📚 Vrije Woordenlijsten")
-                    for i, v in enumerate(st.session_state.db['vocab_lists']):
-                        if st.button(f"📥 Download {v['title']}", key=f"dl_{i}"):
-                            st.session_state.db['user_vocab'].setdefault(mijn_naam, {}).update(v['words'])
-                            sla_db_op(); st.toast("Toegevoegd!", icon="📚")
-        live_taken()
+        with c2:
+            if st.session_state.db['vocab_lists']:
+                st.subheader("📚 Vrije Woordenlijsten")
+                for i, v in enumerate(st.session_state.db['vocab_lists']):
+                    if st.button(f"📥 Download {v['title']}", key=f"dl_{i}"):
+                        st.session_state.db['user_vocab'].setdefault(mijn_naam, {}).update(v['words'])
+                        sla_db_op(); st.toast("Toegevoegd!", icon="📚")
     
     else:
         # Actieve Taak Minigame
