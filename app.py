@@ -10,13 +10,13 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🏝️ v14.1"
+SITE_TITLE = "Putsie WORLD 🏝️ v14.2"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
 AI_PUNT_PRIJS = 1000
 
-# JOUW GITHUB URL VOOR DE PLAATJES (Verander JOUW_NAAM)
+# JOUW GITHUB URL VOOR DE PLAATJES
 IMG_BASE_URL = "https://raw.githubusercontent.com/JOUW_NAAM/putsie-world/main/assets/"
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="expanded")
@@ -91,7 +91,7 @@ def laad_db():
         "saldi": {}, "ai_points": {}, "user_vocab": {}, "chat_messages": [], "vocab_lists": [],
         "tasks": [], "completed_tasks": {}, "klascodes": {"ADMIN-000": "elliot"}, "teacher_classes": {},
         "chat_tags": {}, "custom_tags": ["👑 ADMIN", "⭐ VIP", "🔥 STRIJDER"], "daily_claims": {},
-        "islands": {}, "island_levels": {}, "inventory": {}, # NIEUW VOOR V14
+        "islands": {}, "island_levels": {}, "inventory": {}, 
         "lockdown": False, "lockdown_msg": "Systeem onderhoud door Elliot"
     }
     if os.path.exists(DB_FILE):
@@ -112,9 +112,15 @@ def sla_db_op():
 
 if 'db' not in st.session_state: st.session_state.db = laad_db()
 
+# --- VEILIGE DATABASE INITIALISATIE (ANTI-CRASH) ---
+# Zorgt ervoor dat deze mappen ALTIJD bestaan in het geheugen
+st.session_state.db.setdefault('islands', {})
+st.session_state.db.setdefault('island_levels', {})
+st.session_state.db.setdefault('inventory', {})
+
 # --- 4. HACKER COMMAND PANEL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V14.1</h1><p>Root Access Granted. Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V14.2</h1><p>Root Access Granted. Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown":
         st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
@@ -197,7 +203,6 @@ def putsie_reageer(actie):
 
 # --- 7. SIDEBAR ---
 with st.sidebar:
-    # Putsie Pet (als hij via terminal geactiveerd is)
     if st.session_state.putsie_active:
         st.markdown(f"<div style='background:rgba(255,255,255,0.2); border-radius:15px; padding:10px; text-align:center; margin-bottom:15px;'><div style='background:white; color:black; border-radius:10px; padding:5px; font-size:12px;'>{st.session_state.putsie_text}</div><div style='font-size:40px;'>{st.session_state.putsie_mood}</div></div>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
@@ -212,7 +217,6 @@ with st.sidebar:
     col_s1.metric("💰 Munten", mijn_saldo)
     col_s2.metric("💎 AI Punten", st.session_state.db['ai_points'].get(mijn_naam, 0))
     
-    # Dagelijkse Bonus
     vandaag = datetime.now().strftime("%Y-%m-%d")
     laatste_claim = st.session_state.db.get('daily_claims', {}).get(mijn_naam, "")
     if laatste_claim != vandaag:
@@ -239,13 +243,13 @@ if nav == "🏝️ Eiland & Wereld":
     tab1, tab2, tab3 = st.tabs(["Mijn Eiland", "Bouwmarkt", "Wereldkaart"])
     
     with tab1:
-        mijn_grid_size = st.session_state.db['island_levels'].get(mijn_naam, 3)
+        # VEILIGE CHECK VOOR EILAND LEVEL
+        mijn_grid_size = st.session_state.db.setdefault('island_levels', {}).get(mijn_naam, 3)
         st.subheader(f"Jouw Eiland ({mijn_grid_size}x{mijn_grid_size})")
         
         eiland_data = st.session_state.db.setdefault('islands', {}).setdefault(mijn_naam, {})
         inventaris = st.session_state.db.setdefault('inventory', {}).setdefault(mijn_naam, {})
         
-        # Grid Tekenen
         for r in range(mijn_grid_size):
             cols = st.columns(mijn_grid_size)
             for c in range(mijn_grid_size):
@@ -253,8 +257,7 @@ if nav == "🏝️ Eiland & Wereld":
                 with cols[c]:
                     if pos in eiland_data:
                         item_naam = eiland_data[pos]
-                        emoji = SHOP_ITEMS[item_naam]['emoji']
-                        # EMOJI FALLBACK INGEBOUWD (Als IMG niet laadt, zie je de emoji)
+                        emoji = SHOP_ITEMS.get(item_naam, {}).get('emoji', '❓')
                         st.markdown(f"<div class='island-tile-filled' title='Klik om te verwijderen'>{emoji}</div>", unsafe_allow_html=True)
                         if st.button("Opbergen", key=f"remove_{pos}"):
                             inventaris[item_naam] = inventaris.get(item_naam, 0) + 1
@@ -266,7 +269,6 @@ if nav == "🏝️ Eiland & Wereld":
                             st.session_state.build_pos = pos
                             st.rerun()
                             
-        # Bouw Menu
         if 'build_pos' in st.session_state:
             st.divider()
             st.write(f"Bouwen op vakje: {st.session_state.build_pos}")
@@ -291,7 +293,7 @@ if nav == "🏝️ Eiland & Wereld":
                 st.markdown(f"<div style='background:rgba(0,0,0,0.2); padding:10px; border-radius:10px; text-align:center;'><h1>{data['emoji']}</h1><b>{item}</b><br>{data['prijs']} 🪙</div>", unsafe_allow_html=True)
                 if st.button(f"Koop", key=f"buy_{item}", use_container_width=True):
                     if mijn_saldo >= data['prijs']:
-                        st.session_state.db['saldi'][mijn_naam] -= data['prijs']
+                        st.session_state.db.setdefault('saldi', {})[mijn_naam] = mijn_saldo - data['prijs']
                         inventaris[item] = inventaris.get(item, 0) + 1
                         sla_db_op(); st.toast(f"{item} gekocht!", icon="🛒"); st.rerun()
                     else: st.error("Te weinig munten!")
@@ -302,7 +304,7 @@ if nav == "🏝️ Eiland & Wereld":
         if st.button(f"Vergroot Eiland naar {mijn_grid_size + 1}x{mijn_grid_size + 1} ({kosten_upgrade} 🪙)"):
             if mijn_saldo >= kosten_upgrade:
                 st.session_state.db['saldi'][mijn_naam] -= kosten_upgrade
-                st.session_state.db['island_levels'][mijn_naam] = mijn_grid_size + 1
+                st.session_state.db.setdefault('island_levels', {})[mijn_naam] = mijn_grid_size + 1
                 sla_db_op(); st.balloons(); st.rerun()
             else: st.error("Spaar nog even door!")
 
@@ -317,8 +319,9 @@ if nav == "🏝️ Eiland & Wereld":
                     
         if 'visitor_target' in st.session_state:
             target = st.session_state.visitor_target
-            t_size = st.session_state.db['island_levels'].get(target, 3)
-            t_data = st.session_state.db.get('islands', {}).get(target, {})
+            # VEILIGE CHECK VOOR VISITOR TARGET
+            t_size = st.session_state.db.setdefault('island_levels', {}).get(target, 3)
+            t_data = st.session_state.db.setdefault('islands', {}).get(target, {})
             st.divider()
             st.subheader(f"Je bezoekt: {target.capitalize()} ({t_size}x{t_size})")
             
@@ -329,7 +332,7 @@ if nav == "🏝️ Eiland & Wereld":
                     with cols[c]:
                         if pos in t_data:
                             item_naam = t_data[pos]
-                            st.markdown(f"<div class='island-tile-filled'>{SHOP_ITEMS[item_naam]['emoji']}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div class='island-tile-filled'>{SHOP_ITEMS.get(item_naam, {}).get('emoji', '❓')}</div>", unsafe_allow_html=True)
                         else:
                             st.markdown("<div class='island-tile'></div>", unsafe_allow_html=True)
                             
@@ -497,7 +500,7 @@ elif nav == "👑 Admin Room":
         doel = st.selectbox("Speler", list(st.session_state.db['users'].keys()), key="cs")
         aantal = st.number_input("Aantal", value=100)
         if st.button("Geef Munten"):
-            st.session_state.db['saldi'][doel] = st.session_state.db['saldi'].get(doel, 0) + aantal
+            st.session_state.db.setdefault('saldi', {})[doel] = st.session_state.db.get('saldi', {}).get(doel, 0) + aantal
             sla_db_op(); st.toast("Gedaan!", icon="💸")
     with t4:
         st.session_state.db['lockdown'] = st.toggle("Global Lockdown", value=st.session_state.db['lockdown'])
@@ -507,4 +510,5 @@ elif nav == "👑 Admin Room":
         raw = st.text_area("JSON Editor", value=json.dumps(st.session_state.db, indent=2), height=250)
         if st.button("Save Database", type="primary"):
             try: st.session_state.db = json.loads(raw); sla_db_op(); st.toast("Opgeslagen!", icon="💾"); st.rerun()
+            except: st.error("JSON Error!")
             except: st.error("JSON Error!")
