@@ -10,11 +10,14 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie EDUCATION 💎 v13.1"
+SITE_TITLE = "Putsie WORLD 🏝️ v14.1"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
 AI_PUNT_PRIJS = 1000
+
+# JOUW GITHUB URL VOOR DE PLAATJES (Verander JOUW_NAAM)
+IMG_BASE_URL = "https://raw.githubusercontent.com/JOUW_NAAM/putsie-world/main/assets/"
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="expanded")
 
@@ -54,29 +57,42 @@ def apply_premium_design():
         input, textarea { color: black !important; text-shadow: none !important; }
         .chat-tag { background: linear-gradient(90deg, #FFD700, #FFA500); color: black; padding: 2px 8px; border-radius: 10px; font-weight: bold; font-size: 12px; margin-right: 5px; }
         .lvl-badge { background: #4CAF50; color: white; padding: 2px 6px; border-radius: 5px; font-size: 11px; margin-right: 5px; }
+        
+        /* Island CSS */
+        .island-tile {
+            width: 100%; aspect-ratio: 1/1;
+            border: 2px dashed rgba(255,255,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 24px;
+        }
+        .island-tile-filled {
+            width: 100%; aspect-ratio: 1/1;
+            border: 2px solid rgba(0, 255, 0, 0.5);
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.15); border-radius: 8px; font-size: 30px;
+        }
     </style>
     """, unsafe_allow_html=True)
 
 apply_premium_design()
 
+# --- EILAND SHOP DATA ---
+SHOP_ITEMS = {
+    "Huis": {"prijs": 1000, "img": "huis.png", "emoji": "🏠"},
+    "Straat": {"prijs": 200, "img": "straat.png", "emoji": "🛤️"},
+    "Boom": {"prijs": 500, "img": "boom.png", "emoji": "🌳"},
+    "Fontein": {"prijs": 2500, "img": "fontein.png", "emoji": "⛲"}
+}
+
 # --- 3. DATABASE ENGINE ---
 def laad_db():
     basis_db = {
         "users": {"elliot": {"pw": "Putsie", "role": "admin"}},
-        "saldi": {},
-        "ai_points": {},
-        "user_vocab": {},
-        "chat_messages": [],
-        "vocab_lists": [],
-        "tasks": [], 
-        "completed_tasks": {}, 
-        "klascodes": {"ADMIN-000": "elliot"}, 
-        "teacher_classes": {},
-        "chat_tags": {}, 
-        "custom_tags": ["👑 ADMIN", "⭐ VIP", "🔥 STRIJDER"], 
-        "daily_claims": {}, 
-        "lockdown": False,
-        "lockdown_msg": "Systeem onderhoud door Elliot"
+        "saldi": {}, "ai_points": {}, "user_vocab": {}, "chat_messages": [], "vocab_lists": [],
+        "tasks": [], "completed_tasks": {}, "klascodes": {"ADMIN-000": "elliot"}, "teacher_classes": {},
+        "chat_tags": {}, "custom_tags": ["👑 ADMIN", "⭐ VIP", "🔥 STRIJDER"], "daily_claims": {},
+        "islands": {}, "island_levels": {}, "inventory": {}, # NIEUW VOOR V14
+        "lockdown": False, "lockdown_msg": "Systeem onderhoud door Elliot"
     }
     if os.path.exists(DB_FILE):
         try:
@@ -98,12 +114,14 @@ if 'db' not in st.session_state: st.session_state.db = laad_db()
 
 # --- 4. HACKER COMMAND PANEL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V13.1</h1><p>Root Access Granted.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V14.1</h1><p>Root Access Granted. Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown":
         st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
     elif cmd == "/activatelockdown":
         st.session_state.db['lockdown'] = True; sla_db_op(); st.toast("🔒 Systeem in Lockdown!")
+    elif cmd == "/activateputsie":
+        st.session_state.putsie_active = True; st.success("PROTOCOL: Putsie geactiveerd.")
     elif cmd.startswith("/openaccount"):
         target = cmd.split(" ")[1].lower() if len(cmd.split(" ")) > 1 else ""
         if target in st.session_state.db['users'] or target == "elliot":
@@ -165,13 +183,27 @@ if st.session_state.db.get('lockdown') and not is_admin and not st.session_state
     if st.button("Uitloggen"): st.session_state.ingelogd = False; st.rerun()
     st.stop()
 
-# Level berekening
 mijn_saldo = st.session_state.db['saldi'].get(mijn_naam, 0)
 mijn_level = (mijn_saldo // 500) + 1 
 mijn_tag = st.session_state.db.get('chat_tags', {}).get(mijn_naam, "")
 
-# --- 7. SIDEBAR (MET DAGELIJKSE BONUS) ---
+# PUTSIE PET LOGICA
+if 'putsie_active' not in st.session_state: st.session_state.putsie_active = False
+if 'putsie_mood' not in st.session_state: st.session_state.putsie_mood = "😊"
+if 'putsie_text' not in st.session_state: st.session_state.putsie_text = "Hoi Elliot!"
+def putsie_reageer(actie):
+    r = {"eten": ["Nom nom!", "Heerlijk!"], "spel": ["Wiiiieee!", "Je bent de beste!"], "idle": ["Kijk me zweven!", "Hoi!"]}
+    st.session_state.putsie_text = random.choice(r[actie])
+
+# --- 7. SIDEBAR ---
 with st.sidebar:
+    # Putsie Pet (als hij via terminal geactiveerd is)
+    if st.session_state.putsie_active:
+        st.markdown(f"<div style='background:rgba(255,255,255,0.2); border-radius:15px; padding:10px; text-align:center; margin-bottom:15px;'><div style='background:white; color:black; border-radius:10px; padding:5px; font-size:12px;'>{st.session_state.putsie_text}</div><div style='font-size:40px;'>{st.session_state.putsie_mood}</div></div>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        if c1.button("🍎 Voer"): st.session_state.putsie_mood = "😋"; putsie_reageer("eten")
+        if c2.button("🎾 Speel"): st.session_state.putsie_mood = "🤩"; putsie_reageer("spel")
+
     tag_html = f"<span class='chat-tag'>{mijn_tag}</span>" if mijn_tag else ""
     st.markdown(f"<h3>👋 {tag_html}{mijn_naam.capitalize()}</h3>", unsafe_allow_html=True)
     st.caption(f"⭐ Speler Level: {mijn_level}")
@@ -189,12 +221,9 @@ with st.sidebar:
             st.session_state.db['saldi'][mijn_naam] = st.session_state.db['saldi'].get(mijn_naam, 0) + bonus
             st.session_state.db.setdefault('daily_claims', {})[mijn_naam] = vandaag
             sla_db_op(); st.balloons(); st.toast(f"Je hebt {bonus} munten gekregen!", icon="🎁"); st.rerun()
-    else:
-        st.success("🎁 Bonus al geclaimd vandaag!")
         
     st.divider()
-    
-    nav_options = ["🏫 Klas", "💬 Chat", "🇫🇷 Frans Lab", "🤖 AI Hulp"]
+    nav_options = ["🏝️ Eiland & Wereld", "🏫 Klas", "💬 Chat", "🇫🇷 Frans Lab", "🤖 AI Hulp"]
     if is_teacher: nav_options.append("👩‍🏫 Leraar Paneel")
     if is_admin: nav_options.append("👑 Admin Room")
     
@@ -205,13 +234,114 @@ with st.sidebar:
 
 # --- 8. PAGINA'S ---
 
-if nav == "🤖 AI Hulp":
+if nav == "🏝️ Eiland & Wereld":
+    st.title("🏝️ Putsie World Builder")
+    tab1, tab2, tab3 = st.tabs(["Mijn Eiland", "Bouwmarkt", "Wereldkaart"])
+    
+    with tab1:
+        mijn_grid_size = st.session_state.db['island_levels'].get(mijn_naam, 3)
+        st.subheader(f"Jouw Eiland ({mijn_grid_size}x{mijn_grid_size})")
+        
+        eiland_data = st.session_state.db.setdefault('islands', {}).setdefault(mijn_naam, {})
+        inventaris = st.session_state.db.setdefault('inventory', {}).setdefault(mijn_naam, {})
+        
+        # Grid Tekenen
+        for r in range(mijn_grid_size):
+            cols = st.columns(mijn_grid_size)
+            for c in range(mijn_grid_size):
+                pos = f"{r},{c}"
+                with cols[c]:
+                    if pos in eiland_data:
+                        item_naam = eiland_data[pos]
+                        emoji = SHOP_ITEMS[item_naam]['emoji']
+                        # EMOJI FALLBACK INGEBOUWD (Als IMG niet laadt, zie je de emoji)
+                        st.markdown(f"<div class='island-tile-filled' title='Klik om te verwijderen'>{emoji}</div>", unsafe_allow_html=True)
+                        if st.button("Opbergen", key=f"remove_{pos}"):
+                            inventaris[item_naam] = inventaris.get(item_naam, 0) + 1
+                            del eiland_data[pos]
+                            sla_db_op(); st.rerun()
+                    else:
+                        st.markdown("<div class='island-tile'>+</div>", unsafe_allow_html=True)
+                        if st.button("Bouw", key=f"build_{pos}"):
+                            st.session_state.build_pos = pos
+                            st.rerun()
+                            
+        # Bouw Menu
+        if 'build_pos' in st.session_state:
+            st.divider()
+            st.write(f"Bouwen op vakje: {st.session_state.build_pos}")
+            beschikbaar = [item for item, amount in inventaris.items() if amount > 0]
+            if beschikbaar:
+                kies = st.selectbox("Kies uit inventaris:", beschikbaar)
+                if st.button("Plaats Item", type="primary"):
+                    inventaris[kies] -= 1
+                    eiland_data[st.session_state.build_pos] = kies
+                    del st.session_state.build_pos
+                    sla_db_op(); st.rerun()
+                if st.button("Annuleren"): del st.session_state.build_pos; st.rerun()
+            else:
+                st.warning("Je inventaris is leeg! Ga naar de Bouwmarkt.")
+                if st.button("Annuleren"): del st.session_state.build_pos; st.rerun()
+
+    with tab2:
+        st.subheader("🛒 De Bouwmarkt")
+        cols = st.columns(4)
+        for i, (item, data) in enumerate(SHOP_ITEMS.items()):
+            with cols[i % 4]:
+                st.markdown(f"<div style='background:rgba(0,0,0,0.2); padding:10px; border-radius:10px; text-align:center;'><h1>{data['emoji']}</h1><b>{item}</b><br>{data['prijs']} 🪙</div>", unsafe_allow_html=True)
+                if st.button(f"Koop", key=f"buy_{item}", use_container_width=True):
+                    if mijn_saldo >= data['prijs']:
+                        st.session_state.db['saldi'][mijn_naam] -= data['prijs']
+                        inventaris[item] = inventaris.get(item, 0) + 1
+                        sla_db_op(); st.toast(f"{item} gekocht!", icon="🛒"); st.rerun()
+                    else: st.error("Te weinig munten!")
+                    
+        st.divider()
+        st.subheader("🏝️ Eiland Uitbreiden")
+        kosten_upgrade = mijn_grid_size * 5000
+        if st.button(f"Vergroot Eiland naar {mijn_grid_size + 1}x{mijn_grid_size + 1} ({kosten_upgrade} 🪙)"):
+            if mijn_saldo >= kosten_upgrade:
+                st.session_state.db['saldi'][mijn_naam] -= kosten_upgrade
+                st.session_state.db['island_levels'][mijn_naam] = mijn_grid_size + 1
+                sla_db_op(); st.balloons(); st.rerun()
+            else: st.error("Spaar nog even door!")
+
+    with tab3:
+        st.subheader("🌍 Wereldkaart (Bezoek Klasgenoten)")
+        for student in st.session_state.db['users'].keys():
+            if student != mijn_naam and st.session_state.db['users'][student].get('role') != 'admin':
+                col_a, col_b = st.columns([3, 1])
+                col_a.write(f"**Eiland van {student.capitalize()}**")
+                if col_b.button("Bezoeken", key=f"visit_{student}"):
+                    st.session_state.visitor_target = student
+                    
+        if 'visitor_target' in st.session_state:
+            target = st.session_state.visitor_target
+            t_size = st.session_state.db['island_levels'].get(target, 3)
+            t_data = st.session_state.db.get('islands', {}).get(target, {})
+            st.divider()
+            st.subheader(f"Je bezoekt: {target.capitalize()} ({t_size}x{t_size})")
+            
+            for r in range(t_size):
+                cols = st.columns(t_size)
+                for c in range(t_size):
+                    pos = f"{r},{c}"
+                    with cols[c]:
+                        if pos in t_data:
+                            item_naam = t_data[pos]
+                            st.markdown(f"<div class='island-tile-filled'>{SHOP_ITEMS[item_naam]['emoji']}</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown("<div class='island-tile'></div>", unsafe_allow_html=True)
+                            
+            if st.button("Terug naar Wereldkaart"): del st.session_state.visitor_target; st.rerun()
+
+elif nav == "🤖 AI Hulp":
     st.title("🤖 AI Studiehulp (Llama 3.1)")
     c1, c2 = st.columns([2, 1])
     with c2:
         st.write("🛒 **Winkel**")
         if st.button(f"Koop 1 💎 voor {AI_PUNT_PRIJS} 🪙", use_container_width=True):
-            if st.session_state.db['saldi'].get(mijn_naam, 0) >= AI_PUNT_PRIJS:
+            if mijn_saldo >= AI_PUNT_PRIJS:
                 st.session_state.db['saldi'][mijn_naam] -= AI_PUNT_PRIJS
                 st.session_state.db['ai_points'][mijn_naam] = st.session_state.db['ai_points'].get(mijn_naam, 0) + 1
                 sla_db_op(); st.toast("💎 Gekocht!"); st.rerun()
@@ -225,24 +355,20 @@ if nav == "🤖 AI Hulp":
                     res = client.chat.completions.create(messages=[{"role": "user", "content": vraag}], model=MODEL_NAAM)
                     st.session_state.ai_res = res.choices[0].message.content
                     st.session_state.db['ai_points'][mijn_naam] -= 1; sla_db_op()
-                except Exception as e: st.error(f"AI Fout: {e}")
+                except Exception as e: st.error(f"AI Fout: Zorg voor een werkende API Key.")
             else: st.warning("Te weinig AI punten!")
         if 'ai_res' in st.session_state: st.info(st.session_state.ai_res)
 
 elif nav == "💬 Chat":
     st.title("💬 Klas Chat")
-    
-    # Stabiele weergave zonder experimentele code
     with st.container(height=450, border=True):
         for m in st.session_state.db['chat_messages']:
             u = m['user']
             u_saldo = st.session_state.db['saldi'].get(u, 0)
             u_lvl = (u_saldo // 500) + 1
             u_tag = st.session_state.db.get('chat_tags', {}).get(u, "")
-            
             tag_html = f"<span class='chat-tag'>{u_tag}</span>" if u_tag else ""
             lvl_html = f"<span class='lvl-badge'>Lvl {u_lvl}</span>"
-            
             st.markdown(f"{lvl_html}{tag_html}**{u.capitalize()}**: {m['text']}", unsafe_allow_html=True)
             
     if p := st.chat_input("Typ iets..."):
@@ -256,7 +382,7 @@ elif nav == "🇫🇷 Frans Lab":
         g = st.text_input(f"Vertaal: {st.session_state.q}")
         if st.button("Controleren", type="primary"):
             if g.lower().strip() == w[st.session_state.q].lower().strip():
-                st.session_state.db['saldi'][mijn_naam] = st.session_state.db['saldi'].get(mijn_naam, 0) + 20
+                st.session_state.db['saldi'][mijn_naam] = mijn_saldo + 20
                 st.toast("Goed! +20 🪙", icon="🎉")
                 del st.session_state.q; sla_db_op(); st.rerun()
             else: st.error("Helaas!")
@@ -264,10 +390,8 @@ elif nav == "🇫🇷 Frans Lab":
 
 elif nav == "🏫 Klas":
     st.title("🏫 Klaslokaal")
-    
     if 'active_task' not in st.session_state:
         beschikbare_taken = [t for t in st.session_state.db['tasks'] if t.get('id', t.get('title')) not in st.session_state.db.get('completed_tasks', {}).get(mijn_naam, [])]
-        
         c1, c2 = st.columns(2)
         with c1:
             if beschikbare_taken:
@@ -285,9 +409,7 @@ elif nav == "🏫 Klas":
                             if st.button("Markeer als Gelezen", key=f"read_{t.get('title')}"):
                                 st.session_state.db.setdefault('completed_tasks', {}).setdefault(mijn_naam, []).append(t.get('title'))
                                 sla_db_op(); st.rerun()
-            elif st.session_state.db['tasks']:
-                st.success("Je hebt al je taken af! Goed bezig!")
-
+            elif st.session_state.db['tasks']: st.success("Je hebt al je taken af! Goed bezig!")
         with c2:
             if st.session_state.db['vocab_lists']:
                 st.subheader("📚 Vrije Woordenlijsten")
@@ -295,14 +417,11 @@ elif nav == "🏫 Klas":
                     if st.button(f"📥 Download {v['title']}", key=f"dl_{i}"):
                         st.session_state.db['user_vocab'].setdefault(mijn_naam, {}).update(v['words'])
                         sla_db_op(); st.toast("Toegevoegd!", icon="📚")
-    
     else:
-        # Actieve Taak Minigame
         t = st.session_state.active_task
         nog_te_doen = len(st.session_state.task_words)
         totaal = len(t['words'])
         voortgang = totaal - nog_te_doen
-        
         st.subheader(f"Actieve Taak: {t['title']}")
         st.progress(voortgang / totaal)
         st.write(f"Woord {voortgang + 1} van {totaal}")
@@ -310,45 +429,34 @@ elif nav == "🏫 Klas":
         if nog_te_doen > 0:
             huidig_woord = st.session_state.task_words[0]
             ans = st.text_input(f"Vertaal: {huidig_woord}", key="task_ans")
-            
             if st.button("Controleer Woord", type="primary"):
                 if ans.lower().strip() == t['words'][huidig_woord].lower().strip():
-                    st.toast("Correct!", icon="✅")
-                    st.session_state.task_words.pop(0)
-                    st.rerun()
-                else:
-                    st.error("Dat is niet juist. Probeer het opnieuw!")
+                    st.toast("Correct!", icon="✅"); st.session_state.task_words.pop(0); st.rerun()
+                else: st.error("Dat is niet juist. Probeer het opnieuw!")
         else:
-            st.balloons()
-            st.success("🎉 Taak Voltooid! Je hebt een bonus van 100 munten verdiend!")
-            st.session_state.db['saldi'][mijn_naam] = st.session_state.db['saldi'].get(mijn_naam, 0) + 100
+            st.balloons(); st.success("🎉 Taak Voltooid! Je hebt een bonus van 100 munten verdiend!")
+            st.session_state.db['saldi'][mijn_naam] = mijn_saldo + 100
             st.session_state.db.setdefault('completed_tasks', {}).setdefault(mijn_naam, []).append(t['id'])
             sla_db_op()
-            
-            if st.button("Sluit Taak"):
-                del st.session_state.active_task
-                del st.session_state.task_words
-                st.rerun()
+            if st.button("Sluit Taak"): del st.session_state.active_task; del st.session_state.task_words; st.rerun()
 
 elif nav == "👩‍🏫 Leraar Paneel":
     st.title("👩‍🏫 Leraar Dashboard")
     mijn_klas = st.session_state.db.get('teacher_classes', {}).get(mijn_naam, "Geen")
     st.info(f"Jouw Leerlingen loggen in met klascode: **{mijn_klas}**")
-    
-    t1, t2 = st.tabs(["📋 Nieuwe Taak (Interactief)", "📖 Vrije Lijst Delen"])
+    t1, t2 = st.tabs(["📋 Nieuwe Taak", "📖 Vrije Lijst"])
     with t1:
-        tt = st.text_input("Titel van de Taak (bijv. Hoofdstuk 1)")
-        tw = st.text_area("Woorden (Format: nl=fr, 1 woord per regel)")
-        if st.button("Post Taak naar Klas", type="primary"):
+        tt = st.text_input("Titel van de Taak")
+        tw = st.text_area("Woorden (nl=fr)")
+        if st.button("Post Taak", type="primary"):
             if tt and tw:
                 d = {l.split("=")[0].strip(): l.split("=")[1].strip() for l in tw.split("\n") if "=" in l}
-                task_id = str(random.randint(10000, 99999))
-                st.session_state.db['tasks'].append({"id": task_id, "title": tt, "words": d})
-                sla_db_op(); st.toast("Interactieve taak geplaatst!", icon="🚀"); st.rerun()
-            else: st.warning("Vul titel en woorden in.")
+                st.session_state.db['tasks'].append({"id": str(random.randint(10000, 99999)), "title": tt, "words": d})
+                sla_db_op(); st.toast("Taak geplaatst!", icon="🚀"); st.rerun()
+            else: st.warning("Vul alles in.")
     with t2:
-        lt, lw = st.text_input("Lijst Naam"), st.text_area("Woorden (nl=fr)")
-        if st.button("Deel Vrije Lijst"):
+        lt, lw = st.text_input("Lijst Naam"), st.text_area("Woordenlijst (nl=fr)")
+        if st.button("Deel Lijst"):
             if lt and lw:
                 d = {l.split("=")[0].strip(): l.split("=")[1].strip() for l in lw.split("\n") if "=" in l}
                 st.session_state.db['vocab_lists'].append({"title": lt, "words": d})
@@ -357,57 +465,46 @@ elif nav == "👩‍🏫 Leraar Paneel":
 elif nav == "👑 Admin Room":
     st.title("👑 Admin Control Room")
     t1, t2, t3, t4 = st.tabs(["🏷️ Tags", "👩‍🏫 Leraren", "💰 Economie", "⚙️ Systeem"])
-    
     with t1:
         st.subheader("Chat Tags Maken & Uitdelen")
-        c_tag1, c_tag2 = st.columns(2)
-        with c_tag1:
-            nieuwe_tag = st.text_input("Nieuwe Tag Naam (bijv. 🥶 CHILLER)")
+        c_t1, c_t2 = st.columns(2)
+        with c_t1:
+            nt = st.text_input("Nieuwe Tag Naam")
             if st.button("Maak Tag"):
-                if nieuwe_tag not in st.session_state.db.setdefault('custom_tags', []):
-                    st.session_state.db['custom_tags'].append(nieuwe_tag)
-                    sla_db_op(); st.success(f"Tag {nieuwe_tag} aangemaakt!")
-        with c_tag2:
+                if nt not in st.session_state.db.setdefault('custom_tags', []):
+                    st.session_state.db['custom_tags'].append(nt); sla_db_op(); st.success(f"Tag {nt} gemaakt!")
+        with c_t2:
             speler = st.selectbox("Kies Speler", list(st.session_state.db['users'].keys()))
-            kies_tag = st.selectbox("Kies Tag", ["(Verwijder Tag)"] + st.session_state.db.get('custom_tags', []))
-            if st.button("Geef Tag aan Speler", type="primary"):
-                if kies_tag == "(Verwijder Tag)":
-                    if speler in st.session_state.db.setdefault('chat_tags', {}):
-                        del st.session_state.db['chat_tags'][speler]
-                else:
-                    st.session_state.db.setdefault('chat_tags', {})[speler] = kies_tag
-                sla_db_op(); st.toast("Tag succesvol bijgewerkt!", icon="🏷️")
-                
+            kt = st.selectbox("Kies Tag", ["(Verwijder)"] + st.session_state.db.get('custom_tags', []))
+            if st.button("Geef Tag", type="primary"):
+                if kt == "(Verwijder)":
+                    if speler in st.session_state.db.setdefault('chat_tags', {}): del st.session_state.db['chat_tags'][speler]
+                else: st.session_state.db.setdefault('chat_tags', {})[speler] = kt
+                sla_db_op(); st.toast("Tag bijgewerkt!", icon="🏷️")
     with t2:
-        st.subheader("Promoveer Student tot Leraar")
+        st.subheader("Promoveer Student")
         studenten = [u for u, data in st.session_state.db['users'].items() if data.get('role') != 'admin']
         if studenten:
-            doel_leraar = st.selectbox("Selecteer Student", studenten)
+            dl = st.selectbox("Selecteer Student", studenten)
             if st.button("Maak Leraar", type="primary"):
-                nieuwe_code = f"KLAS-{random.randint(1000, 9999)}"
-                st.session_state.db['users'][doel_leraar]['role'] = "teacher"
-                st.session_state.db['klascodes'][nieuwe_code] = f"Klas van {doel_leraar}"
-                st.session_state.db['teacher_classes'][doel_leraar] = nieuwe_code
-                sla_db_op(); st.success(f"Gelukt! {doel_leraar} is nu leraar. Code is {nieuwe_code}")
-        else:
-            st.info("Geen studenten beschikbaar.")
-            
+                nc = f"KLAS-{random.randint(1000, 9999)}"
+                st.session_state.db['users'][dl]['role'] = "teacher"
+                st.session_state.db['klascodes'][nc] = f"Klas van {dl}"
+                st.session_state.db['teacher_classes'][dl] = nc
+                sla_db_op(); st.success(f"{dl} is nu leraar. Code is {nc}")
     with t3:
         st.subheader("Munten Beheer")
-        doel = st.selectbox("Selecteer Speler", list(st.session_state.db['users'].keys()), key="coin_select")
-        aantal = st.number_input("Aantal Munten", value=100)
+        doel = st.selectbox("Speler", list(st.session_state.db['users'].keys()), key="cs")
+        aantal = st.number_input("Aantal", value=100)
         if st.button("Geef Munten"):
             st.session_state.db['saldi'][doel] = st.session_state.db['saldi'].get(doel, 0) + aantal
-            sla_db_op(); st.toast("Munten overgemaakt!", icon="💸")
-            
+            sla_db_op(); st.toast("Gedaan!", icon="💸")
     with t4:
         st.session_state.db['lockdown'] = st.toggle("Global Lockdown", value=st.session_state.db['lockdown'])
         if st.button("Wis Alle Taken & Lijsten"):
             st.session_state.db['tasks'], st.session_state.db['completed_tasks'], st.session_state.db['vocab_lists'] = [], {}, []
-            sla_db_op(); st.toast("Alles gewist!", icon="🧹"); st.rerun()
-            
-        st.divider()
+            sla_db_op(); st.toast("Gewist!", icon="🧹"); st.rerun()
         raw = st.text_area("JSON Editor", value=json.dumps(st.session_state.db, indent=2), height=250)
         if st.button("Save Database", type="primary"):
-            try: st.session_state.db = json.loads(raw); sla_db_op(); st.toast("DB Opgeslagen!", icon="💾"); st.rerun()
+            try: st.session_state.db = json.loads(raw); sla_db_op(); st.toast("Opgeslagen!", icon="💾"); st.rerun()
             except: st.error("JSON Error!")
