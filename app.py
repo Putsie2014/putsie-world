@@ -10,7 +10,7 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🏝️ v14.2"
+SITE_TITLE = "Putsie WORLD 🏝️ v14.3"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -84,7 +84,7 @@ SHOP_ITEMS = {
     "Fontein": {"prijs": 2500, "img": "fontein.png", "emoji": "⛲"}
 }
 
-# --- 3. DATABASE ENGINE ---
+# --- 3. DATABASE ENGINE (CRASH-FREE VERSIE) ---
 def laad_db():
     basis_db = {
         "users": {"elliot": {"pw": "Putsie", "role": "admin"}},
@@ -101,26 +101,27 @@ def laad_db():
                 for k in basis_db: 
                     if k not in d: d[k] = basis_db[k]
                 return d
-        except: return basis_db
+        except Exception: 
+            return basis_db
     return basis_db
 
 def sla_db_op():
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(st.session_state.db, f, separators=(',', ':')) 
-    except Exception as e: st.error(f"🚨 Fout bij opslaan: {e}")
+    except Exception as e: 
+        st.error(f"🚨 Fout bij opslaan: {e}")
 
 if 'db' not in st.session_state: st.session_state.db = laad_db()
 
 # --- VEILIGE DATABASE INITIALISATIE (ANTI-CRASH) ---
-# Zorgt ervoor dat deze mappen ALTIJD bestaan in het geheugen
 st.session_state.db.setdefault('islands', {})
 st.session_state.db.setdefault('island_levels', {})
 st.session_state.db.setdefault('inventory', {})
 
 # --- 4. HACKER COMMAND PANEL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V14.2</h1><p>Root Access Granted. Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V14.3</h1><p>Root Access Granted. Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown":
         st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
@@ -243,7 +244,6 @@ if nav == "🏝️ Eiland & Wereld":
     tab1, tab2, tab3 = st.tabs(["Mijn Eiland", "Bouwmarkt", "Wereldkaart"])
     
     with tab1:
-        # VEILIGE CHECK VOOR EILAND LEVEL
         mijn_grid_size = st.session_state.db.setdefault('island_levels', {}).get(mijn_naam, 3)
         st.subheader(f"Jouw Eiland ({mijn_grid_size}x{mijn_grid_size})")
         
@@ -319,7 +319,6 @@ if nav == "🏝️ Eiland & Wereld":
                     
         if 'visitor_target' in st.session_state:
             target = st.session_state.visitor_target
-            # VEILIGE CHECK VOOR VISITOR TARGET
             t_size = st.session_state.db.setdefault('island_levels', {}).get(target, 3)
             t_data = st.session_state.db.setdefault('islands', {}).get(target, {})
             st.divider()
@@ -509,6 +508,10 @@ elif nav == "👑 Admin Room":
             sla_db_op(); st.toast("Gewist!", icon="🧹"); st.rerun()
         raw = st.text_area("JSON Editor", value=json.dumps(st.session_state.db, indent=2), height=250)
         if st.button("Save Database", type="primary"):
-            try: st.session_state.db = json.loads(raw); sla_db_op(); st.toast("Opgeslagen!", icon="💾"); st.rerun()
-            except: st.error("JSON Error!")
-            except: st.error("JSON Error!")
+            try:
+                st.session_state.db = json.loads(raw)
+                sla_db_op()
+                st.toast("Opgeslagen!", icon="💾")
+                st.rerun()
+            except Exception as e:
+                st.error(f"JSON Error: {e}")
