@@ -12,7 +12,7 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🎓 v20.0"
+SITE_TITLE = "Putsie WORLD 🎓 v21.0"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -54,7 +54,7 @@ def apply_premium_design():
         
         /* DOOLHOF/MAP RENDERING TYCOON STYLE */
         .game-map {
-            text-align: center; font-size: 42px; line-height: 1.05; letter-spacing: -2px; 
+            text-align: center; line-height: 1.05;
             background: rgba(0,0,0,0.4); padding: 15px; border-radius: 15px;
             border: 3px solid #fdbb2d; box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5);
             display: inline-block;
@@ -74,7 +74,9 @@ SHOP_ITEMS = {
     "Huis": {"prijs": 1000, "emoji": "🏠"},
     "Kampvuur": {"prijs": 1200, "emoji": "🔥"},
     "Fontein": {"prijs": 2500, "emoji": "⛲"},
-    "Kasteel": {"prijs": 10000, "emoji": "🏰"}
+    "Schatkist": {"prijs": 5000, "emoji": "💎"},
+    "Kasteel": {"prijs": 10000, "emoji": "🏰"},
+    "Draak": {"prijs": 25000, "emoji": "🐉"}
 }
 
 RAADSELS = [
@@ -121,7 +123,7 @@ def verifieer_speler_data(naam):
     st.session_state.db.setdefault('user_vocab', {}).setdefault(naam, {})
     st.session_state.db.setdefault('completed_tasks', {}).setdefault(naam, [])
     st.session_state.db.setdefault('islands', {}).setdefault(naam, {})
-    st.session_state.db.setdefault('island_levels', {}).setdefault(naam, 4) # Begin met 4x4 voor meer waterruimte!
+    st.session_state.db.setdefault('island_levels', {}).setdefault(naam, 4) 
     st.session_state.db.setdefault('inventory', {}).setdefault(naam, {})
     st.session_state.db.setdefault('chat_tags', {}).setdefault(naam, "")
     st.session_state.db.setdefault('avatars', {}).setdefault(naam, "👤")
@@ -177,7 +179,7 @@ verifieer_speler_data(st.session_state.username)
 
 # --- TERMINAL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V20.0</h1><p>Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V21.0</h1><p>Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown":
         st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
@@ -331,12 +333,14 @@ elif nav == "🏝️ Tycoon Eiland":
         c_map, c_controls = st.columns([1.5, 1])
         
         with c_map:
-            # Bereken Eiland Waarde
             eiland_waarde = sum([SHOP_ITEMS.get(item, {}).get('prijs', 0) for item in eiland_data.values()])
             st.markdown(f"<div class='net-worth'>📈 Eiland Waarde: {eiland_waarde} 🪙</div>", unsafe_allow_html=True)
             
-            # --- DOOLHOF RENDERING (MET WATER RAND) ---
-            map_html = "<div class='game-map'>"
+            # --- DYNAMISCH AUTO-SCALE SYSTEEM ---
+            fs = max(14, int(160 / mijn_grid_size))
+            ls = max(1, int(fs / 15))
+            
+            map_html = f"<div class='game-map' style='font-size: {fs}px; letter-spacing: -{ls}px;'>"
             for r in range(mijn_grid_size):
                 row_str = ""
                 for c in range(mijn_grid_size):
@@ -345,11 +349,8 @@ elif nav == "🏝️ Tycoon Eiland":
                         item_naam = eiland_data[pos]
                         row_str += SHOP_ITEMS.get(item_naam, {}).get('emoji', '❓')
                     else:
-                        # Als het de buitenste rand is: teken water, anders gras
-                        if r == 0 or r == mijn_grid_size - 1 or c == 0 or c == mijn_grid_size - 1:
-                            row_str += "🟦"
-                        else:
-                            row_str += "🟩"
+                        if r == 0 or r == mijn_grid_size - 1 or c == 0 or c == mijn_grid_size - 1: row_str += "🟦"
+                        else: row_str += "🟩"
                 map_html += row_str + "<br>"
             map_html += "</div>"
             st.markdown(map_html, unsafe_allow_html=True)
@@ -358,7 +359,6 @@ elif nav == "🏝️ Tycoon Eiland":
             st.subheader("🛠️ Bouw Paneel")
             st.write("Kies de coördinaten (0 is linksboven).")
             
-            # Waterrand beveiliging: Je kunt niet op de rand bouwen!
             rij = st.number_input("Rij (Y)", min_value=1, max_value=mijn_grid_size-2, step=1, help="De rand is water, daar kun je niet bouwen!")
             kolom = st.number_input("Kolom (X)", min_value=1, max_value=mijn_grid_size-2, step=1, help="De rand is water, daar kun je niet bouwen!")
             pos_key = f"{rij},{kolom}"
@@ -368,17 +368,14 @@ elif nav == "🏝️ Tycoon Eiland":
                 if st.button("Opbergen", use_container_width=True):
                     item = eiland_data[pos_key]
                     inventaris[item] = inventaris.get(item, 0) + 1
-                    del eiland_data[pos_key]
-                    sla_db_op(); st.rerun()
+                    del eiland_data[pos_key]; sla_db_op(); st.rerun()
             else:
                 st.success("Dit vakje is vrij (Gras).")
                 beschikbaar = [item for item, amount in inventaris.items() if amount > 0]
                 if beschikbaar:
                     kies = st.selectbox("Kies uit inventaris:", beschikbaar)
                     if st.button("Plaats Item", type="primary", use_container_width=True):
-                        inventaris[kies] -= 1
-                        eiland_data[pos_key] = kies
-                        sla_db_op(); st.rerun()
+                        inventaris[kies] -= 1; eiland_data[pos_key] = kies; sla_db_op(); st.rerun()
                 else:
                     st.warning("Inventaris leeg! Ga naar de Bouwmarkt.")
                     
@@ -419,8 +416,7 @@ elif nav == "🏝️ Tycoon Eiland":
                 col_a, col_b = st.columns([3, 1])
                 ava = st.session_state.db['avatars'].get(student, "👤")
                 col_a.write(f"**{ava} Eiland van {student.capitalize()}**")
-                if col_b.button("Bezoeken", key=f"visit_{student}"):
-                    st.session_state.visitor_target = student
+                if col_b.button("Bezoeken", key=f"visit_{student}"): st.session_state.visitor_target = student
                     
         if 'visitor_target' in st.session_state:
             target = st.session_state.visitor_target
@@ -428,14 +424,15 @@ elif nav == "🏝️ Tycoon Eiland":
             t_data = st.session_state.db['islands'].get(target, {})
             st.divider()
             ava_t = st.session_state.db['avatars'].get(target, "👤")
-            
             t_waarde = sum([SHOP_ITEMS.get(item, {}).get('prijs', 0) for item in t_data.values()])
             st.subheader(f"Je bezoekt: {ava_t} {target.capitalize()} (Waarde: {t_waarde} 🪙)")
             
             _, col_visitor, _ = st.columns([1, 2, 1])
             with col_visitor:
-                # MAZE RENDER VOOR BEZOEKERS
-                map_html = "<div class='game-map'>"
+                # DYNAMISCH AUTO-SCALE VOOR BEZOEKERS
+                fs_t = max(14, int(160 / t_size))
+                ls_t = max(1, int(fs_t / 15))
+                map_html = f"<div class='game-map' style='font-size: {fs_t}px; letter-spacing: -{ls_t}px;'>"
                 for r in range(t_size):
                     row_str = ""
                     for c in range(t_size):
