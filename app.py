@@ -10,7 +10,7 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🎓 v16.0"
+SITE_TITLE = "Putsie WORLD 🎓 v16.1"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -21,7 +21,7 @@ IMG_BASE_URL = "https://raw.githubusercontent.com/JOUW_NAAM/putsie-world/main/as
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. PREMIUM STYLING (Terug naar de mooie 14.4 stijl!) ---
+# --- 2. PREMIUM STYLING ---
 def apply_premium_design():
     st.markdown("""
     <style>
@@ -94,11 +94,11 @@ SHOP_ITEMS = {
 def laad_db():
     basis_db = {
         "users": {"elliot": {"pw": "Putsie", "role": "admin", "class": "ADMIN-000"}},
-        "classes": {"ADMIN-000": {"name": "Admin Base", "teacher": "elliot"}}, # Nieuw klas systeem
+        "classes": {"ADMIN-000": {"name": "Admin Base", "teacher": "elliot"}},
         "saldi": {}, "ai_points": {}, "user_vocab": {}, "chat_messages": [], "vocab_lists": [],
         "tasks": [], "completed_tasks": {}, "chat_tags": {}, "custom_tags": ["👑 ADMIN", "⭐ VIP", "🔥 STRIJDER"], 
         "daily_claims": {}, "islands": {}, "island_levels": {}, "inventory": {}, 
-        "islands_enabled": False, # Eilanden zijn nu een BETA feature
+        "islands_enabled": False,
         "lockdown": False, "lockdown_msg": "Systeem onderhoud door Elliot"
     }
     if os.path.exists(DB_FILE):
@@ -123,7 +123,7 @@ if 'db' not in st.session_state: st.session_state.db = laad_db()
 
 # --- 4. HACKER COMMAND PANEL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V16.0</h1><p>Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V16.1</h1><p>Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown":
         st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
@@ -140,7 +140,7 @@ if st.session_state.get('in_terminal', False):
         st.session_state.in_terminal = False; st.rerun()
     st.stop() 
 
-# --- 5. LOGIN & REGISTRATIE (Aangepast!) ---
+# --- 5. LOGIN & REGISTRATIE ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 
 if not st.session_state.ingelogd:
@@ -216,7 +216,6 @@ with st.sidebar:
     col_s1.metric("💰 Munten", mijn_saldo)
     col_s2.metric("💎 AI Punten", st.session_state.db['ai_points'].get(mijn_naam, 0))
     
-    # Dagelijkse Bonus
     vandaag = datetime.now().strftime("%Y-%m-%d")
     laatste_claim = st.session_state.db.get('daily_claims', {}).get(mijn_naam, "")
     if laatste_claim != vandaag:
@@ -228,7 +227,7 @@ with st.sidebar:
         
     st.divider()
     
-    # DYNAMISCH MENU (Chat is verplaatst naar Klas, Eilanden zijn BETA)
+    # DYNAMISCH MENU
     nav_options = ["🏫 Klas", "🇫🇷 Frans Lab", "🤖 AI Hulp"]
     if st.session_state.db.get('islands_enabled', False):
         nav_options.insert(0, "🏝️ Eiland (BETA)")
@@ -236,6 +235,19 @@ with st.sidebar:
     if is_admin: nav_options.append("👑 Admin Room")
     
     nav = st.radio("Ga naar:", nav_options)
+    st.divider()
+    
+    # DE LEUKE NIEUWE FEATURE: LEADERBOARD!
+    st.subheader("🏆 Top 3 Spelers")
+    # Zoek alle spelers (geen admins) en sorteer op saldo
+    top_spelers = sorted([(u, s) for u, s in st.session_state.db.get('saldi', {}).items() if st.session_state.db['users'].get(u, {}).get('role') != 'admin'], key=lambda x: x[1], reverse=True)[:3]
+    if top_spelers:
+        for i, (u, s) in enumerate(top_spelers):
+            medaille = ["🥇", "🥈", "🥉"][i] if i < 3 else ""
+            st.markdown(f"**{medaille} {u.capitalize()}** - {s} 🪙")
+    else:
+        st.write("Nog geen spelers.")
+        
     st.divider()
     if st.button("🚪 Uitloggen", use_container_width=True):
         st.session_state.ingelogd = False; st.rerun()
@@ -369,7 +381,6 @@ elif nav == "🇫🇷 Frans Lab":
 elif nav == "🏫 Klas":
     st.title("🏫 Jouw Klaslokaal")
     
-    # 1. Leerling moet eerst in een klas zitten
     if niet_ingedeeld := not mijn_klas:
         st.warning("Je zit nog niet in een klas!")
         invoer_code = st.text_input("Voer hier je Klascode in:")
@@ -383,12 +394,10 @@ elif nav == "🏫 Klas":
         klas_info = st.session_state.db.get('classes', {}).get(mijn_klas, {"name": "Onbekende Klas"})
         st.subheader(f"Welkom bij: {klas_info['name']}")
         
-        # 2. Tabs: Taken | Databanken | Chat
         t_taken, t_lijsten, t_chat = st.tabs(["📋 Huiswerk", "📚 Databanken", "💬 Klas Chat"])
         
         with t_taken:
             if 'active_task' not in st.session_state:
-                # Toon alleen taken voor DEZE klas (als we klassen aan taken koppelen, voor nu alle taken)
                 beschikbare_taken = [t for t in st.session_state.db['tasks'] if t.get('id', t.get('title')) not in st.session_state.db.get('completed_tasks', {}).get(mijn_naam, [])]
                 if beschikbare_taken:
                     for t in beschikbare_taken:
@@ -436,7 +445,6 @@ elif nav == "🏫 Klas":
             else: st.write("Geen lijsten beschikbaar.")
 
         with t_chat:
-            # Privé chat gefilterd op klascode
             klas_berichten = [m for m in st.session_state.db['chat_messages'] if m.get('class') == mijn_klas]
             with st.container(height=400, border=True):
                 for m in klas_berichten:
@@ -455,7 +463,6 @@ elif nav == "🏫 Klas":
 elif nav == "👩‍🏫 Leraar Paneel":
     st.title("👩‍🏫 Leraar Dashboard")
     
-    # Check of de leraar al een klas heeft
     bestaande_klas = None
     for code, info in st.session_state.db.get('classes', {}).items():
         if info['teacher'] == mijn_naam: bestaande_klas = code; break
@@ -520,7 +527,7 @@ elif nav == "👩‍🏫 Leraar Paneel":
 
 elif nav == "👑 Admin Room":
     st.title("👑 Admin Control Room")
-    t1, t2, t3, t4 = st.tabs(["⚙️ Systeem & Lockdown", "🏷️ Tags", "👩‍🏫 Promoties", "💰 Economie"])
+    t1, t2, t3, t4, t5 = st.tabs(["⚙️ Systeem", "🏷️ Tags", "👩‍🏫 Promoties", "💰 Economie", "💾 RAW Database"])
     
     with t1:
         st.subheader("Systeem Beveiliging")
@@ -567,3 +574,22 @@ elif nav == "👑 Admin Room":
         if st.button("Geef Munten"):
             st.session_state.db.setdefault('saldi', {})[doel] = st.session_state.db.get('saldi', {}).get(doel, 0) + aantal
             sla_db_op(); st.toast("Gedaan!", icon="💸")
+            
+    # DEZE WAS VERWIJDERD MAAR IS NU TERUG:
+    with t5:
+        st.subheader("Database Beheer (RAW)")
+        if st.button("Wis Alle Taken & Lijsten"):
+            st.session_state.db['tasks'] = []
+            st.session_state.db['completed_tasks'] = {}
+            st.session_state.db['vocab_lists'] = []
+            sla_db_op(); st.toast("Alles gewist!", icon="🧹"); st.rerun()
+            
+        raw = st.text_area("JSON Editor", value=json.dumps(st.session_state.db, indent=2), height=300)
+        if st.button("Force Save Database", type="primary"):
+            try:
+                st.session_state.db = json.loads(raw)
+                sla_db_op()
+                st.toast("Opgeslagen!", icon="💾")
+                st.rerun()
+            except Exception as e:
+                st.error(f"JSON Error: {e}")
