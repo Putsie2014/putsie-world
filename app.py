@@ -2,6 +2,8 @@ import streamlit as st
 import random
 import json
 import os
+import hashlib
+import html
 from datetime import datetime
 
 try:
@@ -10,7 +12,7 @@ except ImportError:
     st.error("Let op: 'groq' ontbreekt in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🎓 v17.0"
+SITE_TITLE = "Putsie WORLD 🎓 v18.0"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -20,6 +22,11 @@ AI_PUNT_PRIJS = 1000
 IMG_BASE_URL = "https://raw.githubusercontent.com/JOUW_NAAM/putsie-world/main/assets/"
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="expanded")
+
+# --- SECURITY: WACHTWOORD HASHING ---
+def hash_pw(password):
+    """Zet een wachtwoord om in een onleesbare, veilige code."""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # --- 2. PREMIUM STYLING ---
 def apply_premium_design():
@@ -83,7 +90,7 @@ def apply_premium_design():
 
 apply_premium_design()
 
-# --- EILAND SHOP DATA ---
+# --- EILAND SHOP & RAADSELS DATA ---
 SHOP_ITEMS = {
     "Huis": {"prijs": 1000, "img": "huis.png", "emoji": "🏠"},
     "Straat": {"prijs": 200, "img": "straat.png", "emoji": "🛤️"},
@@ -91,10 +98,18 @@ SHOP_ITEMS = {
     "Fontein": {"prijs": 2500, "img": "fontein.png", "emoji": "⛲"}
 }
 
+RAADSELS = [
+    {"q": "Wat heeft tanden maar kan niet bijten?", "a": "kam"},
+    {"q": "Wat wordt natter naarmate het meer droogt?", "a": "handdoek"},
+    {"q": "Ik heb steden maar geen huizen, water maar geen vissen. Wat ben ik?", "a": "landkaart"},
+    {"q": "Wat gaat de hele wereld rond maar blijft in de hoek zitten?", "a": "postzegel"},
+    {"q": "Wat is van jou, maar wordt vaker door anderen gebruikt?", "a": "naam"}
+]
+
 # --- 3. BULLETPROOF DATABASE ENGINE ---
 def laad_db():
     basis_db = {
-        "users": {"elliot": {"pw": "Putsie", "role": "admin", "class": "ADMIN-000"}},
+        "users": {"elliot": {"pw": hash_pw("Putsie"), "role": "admin", "class": "ADMIN-000"}}, # Hashed!
         "classes": {"ADMIN-000": {"name": "Admin Base", "teacher": "elliot"}},
         "saldi": {}, "ai_points": {}, "user_vocab": {}, "chat_messages": [], "vocab_lists": [],
         "tasks": [], "completed_tasks": {}, "chat_tags": {}, "custom_tags": ["👑 ADMIN", "⭐ VIP", "🔥 STRIJDER"], 
@@ -122,7 +137,6 @@ def sla_db_op():
 
 if 'db' not in st.session_state: st.session_state.db = laad_db()
 
-# DIT IS HET PANTSER! Zorgt dat een ingelogde speler áltijd alle keys heeft.
 def verifieer_speler_data(naam):
     st.session_state.db.setdefault('saldi', {}).setdefault(naam, 0)
     st.session_state.db.setdefault('ai_points', {}).setdefault(naam, 5)
@@ -137,7 +151,7 @@ def verifieer_speler_data(naam):
 
 # --- 4. HACKER COMMAND PANEL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V17.0</h1><p>Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V18.0</h1><p>Type /activateputsie for pet.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown":
         st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
@@ -146,7 +160,7 @@ if st.session_state.get('in_terminal', False):
     elif cmd.startswith("/openaccount"):
         target = cmd.split(" ")[1].lower() if len(cmd.split(" ")) > 1 else ""
         if target in st.session_state.db['users'] or target == "elliot":
-            verifieer_speler_data(target) # Pantser actief!
+            verifieer_speler_data(target)
             st.session_state.ingelogd, st.session_state.username = True, target
             st.session_state.role = st.session_state.db['users'].get(target, {}).get("role", "admin")
             st.session_state.lockdown_bypass, st.session_state.in_terminal = True, False
@@ -155,7 +169,7 @@ if st.session_state.get('in_terminal', False):
         st.session_state.in_terminal = False; st.rerun()
     st.stop() 
 
-# --- 5. LOGIN & REGISTRATIE ---
+# --- 5. SECURE LOGIN & REGISTRATIE ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 
 if not st.session_state.ingelogd:
@@ -168,16 +182,25 @@ if not st.session_state.ingelogd:
             u = st.text_input("Naam").lower().strip()
             p = st.text_input("Wachtwoord", type="password")
             if st.button("Start Game", type="primary", use_container_width=True):
+                hashed_p = hash_pw(p) # Hash the input to check against DB
+                
                 if u == "admin2014": st.session_state.in_terminal = True; st.rerun()
-                elif u == "elliot" and p == "Putsie":
+                elif u == "elliot" and p == "Putsie": # Elliot's Master Key
                     verifieer_speler_data("elliot")
                     st.session_state.ingelogd, st.session_state.username, st.session_state.role = True, "elliot", "admin"
                     st.rerun()
-                elif u in st.session_state.db['users'] and st.session_state.db['users'][u]["pw"] == p:
-                    verifieer_speler_data(u)
-                    st.session_state.ingelogd, st.session_state.username = True, u
-                    st.session_state.role = st.session_state.db['users'][u]["role"]
-                    st.rerun()
+                elif u in st.session_state.db['users']:
+                    # Check of het opgeslagen wachtwoord overeenkomt met de hash (of voor de zekerheid het oude onversleutelde ww als fallback)
+                    stored_pw = st.session_state.db['users'][u]["pw"]
+                    if stored_pw == hashed_p or stored_pw == p:
+                        if stored_pw == p: # Update old plain-text passwords to hash instantly
+                            st.session_state.db['users'][u]["pw"] = hashed_p
+                            sla_db_op()
+                        verifieer_speler_data(u)
+                        st.session_state.ingelogd, st.session_state.username = True, u
+                        st.session_state.role = st.session_state.db['users'][u]["role"]
+                        st.rerun()
+                    else: st.error("Inloggegevens fout!")
                 else: st.error("Inloggegevens fout!")
                 
         with t_reg:
@@ -189,9 +212,10 @@ if not st.session_state.ingelogd:
                 if not nu or not np: st.error("⚠️ Vul alle velden in!")
                 elif nu in st.session_state.db['users']: st.error("⚠️ Deze naam is al bezet!")
                 else:
-                    st.session_state.db['users'][nu] = {"pw": np, "role": "student", "class": ""}
-                    verifieer_speler_data(nu) # Data wordt direct gepantserd!
-                    sla_db_op(); st.success("✅ Account succesvol aangemaakt! Log nu in.")
+                    # Sla het wachtwoord veilig, gehashed op
+                    st.session_state.db['users'][nu] = {"pw": hash_pw(np), "role": "student", "class": ""}
+                    verifieer_speler_data(nu)
+                    sla_db_op(); st.success("✅ Account veilig aangemaakt! Log nu in.")
     st.stop()
 
 # --- 6. LOCKDOWN & LOGICA ---
@@ -209,7 +233,6 @@ mijn_saldo = st.session_state.db['saldi'].get(mijn_naam, 0)
 mijn_level = (mijn_saldo // 500) + 1 
 mijn_tag = st.session_state.db.get('chat_tags', {}).get(mijn_naam, "")
 
-# Bepaal speler titel op basis van level
 if mijn_level < 5: speler_titel = "Brugpieper"
 elif mijn_level < 10: speler_titel = "Gevorderde"
 elif mijn_level < 20: speler_titel = "Pro Speler"
@@ -249,7 +272,7 @@ with st.sidebar:
         
     st.divider()
     
-    nav_options = ["🏫 Klas", "🇫🇷 Frans Lab", "🤖 AI Hulp", "🕹️ Arcade"]
+    nav_options = ["🏫 Klas", "🇫🇷 Frans Lab", "🤖 AI Hulp", "🧠 Raadsels"]
     if st.session_state.db.get('islands_enabled', False):
         nav_options.insert(0, "🏝️ Eiland (BETA)")
     if is_teacher: nav_options.append("👩‍🏫 Leraar Paneel")
@@ -273,32 +296,30 @@ with st.sidebar:
 
 # --- 8. PAGINA'S ---
 
-if nav == "🕹️ Arcade":
-    st.title("🕹️ De Putsie Arcade")
-    st.write("Welkom in de arcade! Test je geluk en win extra munten.")
+if nav == "🧠 Raadsels":
+    st.title("🧠 Putsie's Raadsels")
+    st.write("Train je hersenen, beantwoord raadsels en verdien eerlijke munten!")
     
-    with st.container(border=True):
-        st.subheader("🪙 Kop of Munt")
-        inzet = st.number_input("Jouw inzet:", min_value=10, max_value=max(10, mijn_saldo), step=10)
-        keuze = st.radio("Waar wed je op?", ["Kop", "Munt"])
+    if 'current_riddle' not in st.session_state:
+        st.session_state.current_riddle = random.choice(RAADSELS)
         
-        if st.button("Gooi de munt!", type="primary"):
-            if mijn_saldo >= inzet:
-                st.session_state.db['saldi'][mijn_naam] -= inzet # Neem inzet in
-                uitkomst = random.choice(["Kop", "Munt"])
-                st.info(f"De munt draait door de lucht... Het is **{uitkomst}**!")
-                
-                if keuze == uitkomst:
-                    winst = inzet * 2
-                    st.session_state.db['saldi'][mijn_naam] += winst
-                    sla_db_op()
-                    st.balloons()
-                    st.success(f"Gefeliciteerd! Je wint {winst} 🪙!")
-                else:
-                    sla_db_op()
-                    st.error("Helaas, je bent je inzet kwijt. Volgende keer beter!")
-            else:
-                st.error("Je hebt niet genoeg munten voor deze inzet!")
+    with st.container(border=True):
+        st.subheader("Vraag:")
+        st.markdown(f"### *\"{st.session_state.current_riddle['q']}\"*")
+        
+        antwoord = st.text_input("Jouw antwoord (één woord):").lower().strip()
+        
+        if st.button("Raad!", type="primary"):
+            if antwoord == st.session_state.current_riddle['a']:
+                winst = 50
+                st.session_state.db['saldi'][mijn_naam] += winst
+                sla_db_op()
+                st.balloons()
+                st.success(f"Briljant! Het was inderdaad een {antwoord}. Je krijgt {winst} 🪙!")
+                del st.session_state.current_riddle # Haal nieuw raadsel voor volgende keer
+                if st.button("Nog een raadsel"): st.rerun()
+            elif antwoord:
+                st.error("Nee, dat is het niet. Probeer het nog eens!")
 
 elif nav == "🏝️ Eiland (BETA)":
     st.title("🏝️ Eiland Builder (BETA)")
@@ -503,7 +524,9 @@ elif nav == "🏫 Klas":
                     st.markdown(f"{lvl_html}{tag_html}**{u.capitalize()}**: {m['text']}", unsafe_allow_html=True)
             
             if p := st.chat_input("Bericht aan je klas..."):
-                st.session_state.db['chat_messages'].append({"user": mijn_naam, "text": p, "class": mijn_klas})
+                # XSS BEVEILIGING: HTML tags worden geneutraliseerd voor de veiligheid!
+                veilig_bericht = html.escape(p)
+                st.session_state.db['chat_messages'].append({"user": mijn_naam, "text": veilig_bericht, "class": mijn_klas})
                 sla_db_op(); st.rerun()
 
 elif nav == "👩‍🏫 Leraar Paneel":
@@ -637,4 +660,5 @@ elif nav == "👑 Admin Room":
                 st.toast("Opgeslagen!", icon="💾")
                 st.rerun()
             except Exception as e:
+                st.error(f"JSON Error: {e}")
                 st.error(f"JSON Error: {e}")
