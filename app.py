@@ -27,7 +27,7 @@ st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="
 def hash_pw(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- 2. PREMIUM STYLING ---
+# --- 2. PREMIUM STYLING (HTML CANVAS UPGRADE) ---
 def apply_premium_design():
     st.markdown("""
     <style>
@@ -52,13 +52,33 @@ def apply_premium_design():
         .title-badge { background: #9c27b0; color: white; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-style: italic; }
         .achievement-card { background: rgba(255, 215, 0, 0.2); border: 1px solid gold; padding: 10px; border-radius: 10px; text-align: center; }
         
-        /* SEAMLESS GAME GRID */
-        div[data-testid="stHorizontalBlock"]:has(.game-tile) { gap: 0 !important; padding: 0 !important; }
+        /* 🎮 HET NIEUWE HTML EILAND BORD 🎮 */
+        div[data-testid="stHorizontalBlock"]:has(.game-tile) { 
+            gap: 0 !important; padding: 10px !important; 
+            background: rgba(0, 0, 0, 0.4); /* Het 'bord' waar het eiland op ligt */
+            border-radius: 15px; border: 2px solid #fdbb2d;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5);
+        }
         div[data-testid="column"]:has(.game-tile) { padding: 0 !important; margin: 0 !important; position: relative; }
         div[data-testid="column"]:has(.game-tile) > div[data-testid="stVerticalBlock"] { gap: 0 !important; }
-        .game-tile { width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); margin: 0 !important; padding: 0 !important; font-size: 24px; box-sizing: border-box; border-radius: 0 !important; transition: 0.2s; }
-        .game-tile:hover { background: rgba(255, 255, 255, 0.2); cursor: pointer; }
-        .game-tile.filled { background: rgba(0, 255, 100, 0.15); border: 1px solid rgba(0, 255, 100, 0.3); font-size: 35px; }
+        
+        .game-tile { 
+            width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; 
+            background: #8BC34A; /* Gras kleur */
+            border-top: 2px solid #AED581; border-left: 2px solid #AED581; /* 3D effect */
+            border-bottom: 2px solid #558B2F; border-right: 2px solid #558B2F;
+            margin: 0 !important; padding: 0 !important; font-size: 30px; box-sizing: border-box; 
+            border-radius: 0 !important; transition: 0.1s; 
+        }
+        .game-tile:hover { filter: brightness(1.2); cursor: pointer; transform: scale(0.98); }
+        
+        .game-tile.filled { 
+            background: #7CB342; /* Iets donkerder gras als er iets op staat */
+            font-size: 45px; /* Grote emoji's! */
+            text-shadow: 2px 5px 5px rgba(0,0,0,0.5); /* Schaduw onder de emoji */
+        }
+        
+        /* Onzichtbare knoppen hack */
         div[data-testid="column"]:has(.game-tile) div.element-container:has(div[data-testid="stButton"]) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
         div[data-testid="column"]:has(.game-tile) div[data-testid="stButton"] { width: 100%; height: 100%; opacity: 0; }
         div[data-testid="column"]:has(.game-tile) div[data-testid="stButton"] button { width: 100%; height: 100%; cursor: pointer; }
