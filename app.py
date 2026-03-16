@@ -14,31 +14,28 @@ except ImportError:
     st.error("Let op: 'groq' en 'pandas' ontbreken in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🎓 v28.0 OVERLORD"
+SITE_TITLE = "Putsie WORLD 🎓 v29.0"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
 AI_PUNT_PRIJS = 1000
-
-# 🤬 JOUW SCHELDWOORDEN FILTER (Voeg hier zelf woorden toe!)
-BAD_WORDS = ["stom", "dombo", "sukkel", "kut", "kloot", "bitch", "shit", "fuck", "lelijk", "haat"]
 
 # JOUW GITHUB URL VOOR DE PLAATJES
 IMG_BASE_URL = "https://raw.githubusercontent.com/JOUW_NAAM/putsie-world/main/assets/"
 
 st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="expanded")
 
-# --- SECURITY ---
+# --- SECURITY & MODERATIE ---
 def hash_pw(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def censor_text(text):
-    """Kijkt of er scheldwoorden in zitten, vervangt ze door *** en geeft een alarm af."""
+    """Vervangt verboden woorden door *** en geeft een rood vlaggetje af."""
     censored = text
     flagged = False
-    for word in BAD_WORDS:
-        # Zoek het woord, ongeacht of het met hoofdletters is getypt
-        if re.search(r'\b' + re.escape(word) + r'\b', censored, re.IGNORECASE):
+    bad_words_list = st.session_state.db.get('bad_words', [])
+    for word in bad_words_list:
+        if word and re.search(r'\b' + re.escape(word) + r'\b', censored, re.IGNORECASE):
             censored = re.sub(r'\b' + re.escape(word) + r'\b', '***', censored, flags=re.IGNORECASE)
             flagged = True
     return censored, flagged
@@ -136,7 +133,7 @@ safe_defaults = {
     "island_levels": {}, "inventory": {}, "island_names": {}, "island_likes": {}, "is_pro": {},
     "unlocked_achievements": {}, "equipped_achievement": {}, "themes": {}, "pets": {},
     "islands_enabled": False, "lockdown": False, "lockdown_msg": "Systeem onderhoud door Elliot",
-    "announcement": ""
+    "announcement": "", "bad_words": ["stom", "dombo", "sukkel", "kut", "kloot", "bitch", "shit", "fuck", "lelijk", "haat"]
 }
 for key, default_val in safe_defaults.items():
     st.session_state.db.setdefault(key, default_val)
@@ -171,7 +168,7 @@ def verifieer_speler_data(naam):
         d['bank'][naam]['last_interest'] = vandaag
     sla_db_op()
 
-# --- 4. LOGIN ---
+# --- 4. LOGIN & AUTO-LOGIN ---
 if 'ingelogd' not in st.session_state: st.session_state.ingelogd = False
 if not st.session_state.ingelogd:
     apply_premium_design(THEMES["Standaard"])
@@ -180,6 +177,7 @@ if not st.session_state.ingelogd:
     with col2:
         st.markdown(f"<h1 style='text-align:center;'>{SITE_TITLE}</h1>", unsafe_allow_html=True)
         t_log, t_reg = st.tabs(["🔑 Log In", "📝 Registreren"])
+        
         with t_log:
             u = st.text_input("Naam").lower().strip()
             p = st.text_input("Wachtwoord", type="password")
@@ -197,6 +195,7 @@ if not st.session_state.ingelogd:
                         st.session_state.role = st.session_state.db['users'][u]["role"]; st.rerun()
                     else: st.error("Inloggegevens fout!")
                 else: st.error("Gebruiker niet gevonden!")
+                
         with t_reg:
             st.info("Maak je profiel aan.")
             nu = st.text_input("Kies Gebruikersnaam").lower().strip()
@@ -205,8 +204,14 @@ if not st.session_state.ingelogd:
                 if not nu or not np: st.error("⚠️ Vul alles in!")
                 elif nu in st.session_state.db['users']: st.error("⚠️ Deze naam is al bezet!")
                 else:
+                    # Registreren, opslaan EN direct inloggen (Fix voor het refresh-probleem)
                     st.session_state.db['users'][nu] = {"pw": hash_pw(np), "role": "student", "class": ""}
-                    verifieer_speler_data(nu); st.success("✅ Account veilig aangemaakt! Log in.")
+                    verifieer_speler_data(nu)
+                    sla_db_op() # Extra zekerheid
+                    st.session_state.ingelogd = True
+                    st.session_state.username = nu
+                    st.session_state.role = "student"
+                    st.rerun() # Direct de game in!
     st.stop()
 
 verifieer_speler_data(st.session_state.username)
@@ -215,7 +220,7 @@ apply_premium_design(THEMES.get(mijn_thema_naam, THEMES["Standaard"]))
 
 # --- TERMINAL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V28.0</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V29.0</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown": st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
     elif cmd.startswith("/openaccount"):
@@ -341,7 +346,6 @@ if nav == "Profiel":
 elif nav == "Putsie Bank":
     st.title("🏦 De Putsie Bank")
     t_bank1, t_bank2 = st.tabs(["💰 Sparen", "💸 Tikkie sturen"])
-    
     with t_bank1:
         st.write("Zet je munten op de bank en ontvang elke dag **5% rente**!")
         col_b1, col_b2, col_b3 = st.columns(3)
@@ -425,21 +429,20 @@ elif nav == "Klas & Taken":
         t_tasks, t_lijsten, t_chat = st.tabs(["📋 Taken", "📚 Databanken", "💬 Klas Chat"])
         
         with t_tasks:
-            beschikbare_taken = [t for t in st.session_state.db['tasks'] if t.get('id', t.get('title')) not in st.session_state.db['completed_tasks'].get(mijn_naam, []) and t.get('class') in [mijn_klas, None, ""]]
-            if beschikbare_taken:
-                for t in beschikbare_taken:
-                    with st.container(border=True):
-                        st.write(f"**{t.get('title', 'Taak')}** ({len(t.get('words', []))} woorden)")
-                        if 'words' in t:
-                            if st.button("Start Taak", key=f"btn_{t.get('id')}", type="primary"):
-                                st.session_state.active_task = t; st.session_state.task_words = list(t['words'].keys()); st.rerun()
-                        else:
-                            if st.button("Markeer als Gelezen", key=f"read_{t.get('title')}"):
-                                st.session_state.db['completed_tasks'][mijn_naam].append(t.get('title')); st.session_state.db['saldi'][mijn_naam] += 100; sla_db_op(); st.rerun()
-            else: st.success("Alle taken zijn af!")
-            
-            if 'active_task' in st.session_state:
-                st.divider()
+            if 'active_task' not in st.session_state:
+                beschikbare_taken = [t for t in st.session_state.db['tasks'] if t.get('id', t.get('title')) not in st.session_state.db['completed_tasks'].get(mijn_naam, []) and t.get('class') in [mijn_klas, None, ""]]
+                if beschikbare_taken:
+                    for t in beschikbare_taken:
+                        with st.container(border=True):
+                            st.write(f"**{t.get('title', 'Taak')}** ({len(t.get('words', []))} woorden)")
+                            if 'words' in t:
+                                if st.button("Start Taak", key=f"btn_{t.get('id')}", type="primary"):
+                                    st.session_state.active_task = t; st.session_state.task_words = list(t['words'].keys()); st.rerun()
+                            else:
+                                if st.button("Markeer als Gelezen", key=f"read_{t.get('title')}"):
+                                    st.session_state.db['completed_tasks'][mijn_naam].append(t.get('title')); st.session_state.db['saldi'][mijn_naam] += 100; sla_db_op(); st.rerun()
+                else: st.success("Alle taken zijn af!")
+            else:
                 t = st.session_state.active_task; nog_te_doen = len(st.session_state.task_words); totaal = len(t['words']); voortgang = totaal - nog_te_doen
                 st.progress(voortgang / totaal)
                 st.write(f"Woord {voortgang + 1} van {totaal}")
@@ -457,7 +460,7 @@ elif nav == "Klas & Taken":
             lijsten_voor_klas = [l for l in st.session_state.db.get('vocab_lists', []) if l.get('class') in [mijn_klas, None, ""]]
             if lijsten_voor_klas:
                 for i, v in enumerate(lijsten_voor_klas):
-                    if st.button(f"📥 Download {v['title']}", key=f"dl_{i}"): st.session_state.db['user_vocab'][mijn_naam].update(v['words']); sla_db_op(); st.toast("Toegevoegd!", icon="📚")
+                    if st.button(f"📥 Download {v['title']}", key=f"dl_{i}"): st.session_state.db['user_vocab'][mijn_naam].update(v['words']); sla_db_op(); st.toast("Toegevoegd aan Lab!", icon="📚")
             else: st.write("Geen lijsten beschikbaar.")
             
         with t_chat:
@@ -471,13 +474,12 @@ elif nav == "Klas & Taken":
             
             if p := st.chat_input("Typ een bericht..."):
                 veilig_bericht = html.escape(p)
-                # MODERATIE SYSTEEM: Check op scheldwoorden
                 gecensureerd_bericht, is_flagged = censor_text(veilig_bericht)
                 
                 st.session_state.db['chat_messages'].append({
                     "user": mijn_naam, 
-                    "text": gecensureerd_bericht, # De *** versie (voor iedereen)
-                    "original": veilig_bericht, # De originele versie (voor de juf/admin)
+                    "text": gecensureerd_bericht, 
+                    "original": veilig_bericht,
                     "class": mijn_klas,
                     "flagged": is_flagged
                 })
@@ -613,6 +615,7 @@ elif nav == "Eiland Tycoon":
                     kies = st.selectbox("Kies uit inventaris:", list(beschikbaar.keys()))
                     if st.button("Plaats", type="primary", use_container_width=True):
                         st.session_state.db['inventory'][mijn_naam][kies] -= 1; eiland_data[pos_key] = kies; sla_db_op(); st.rerun()
+
     with t2:
         cols = st.columns(4)
         for i, (item, data) in enumerate(SHOP_ITEMS.items()):
@@ -687,8 +690,8 @@ elif nav == "Leraar Paneel" and is_teacher:
                 st.session_state.db['users'][mijn_naam]['class'] = c_code; sla_db_op(); st.rerun()
     else:
         st.info(f"Je beheert **{st.session_state.db['classes'][bestaande_klas]['name']}** (Code: `{bestaande_klas}`)")
-        # 👩‍🏫 EXTRA TAB VOOR MODERATIE
         t1, t2, t3, t4, t5 = st.tabs(["👥 Studenten", "📊 Analyse", "📋 Nieuwe Taak", "📖 Vrije Lijst", "🚩 Moderatie"])
+        
         with t1:
             alle_leerlingen = [u for u, d in st.session_state.db['users'].items() if d.get('role') == 'student']
             in_mijn_klas = [u for u in alle_leerlingen if st.session_state.db['users'][u].get('class') == bestaande_klas]
@@ -701,6 +704,7 @@ elif nav == "Leraar Paneel" and is_teacher:
             if niet_in_klas:
                 toevoegen = st.selectbox("Leerling toevoegen:", niet_in_klas)
                 if st.button("Voeg toe aan klas"): st.session_state.db['users'][toevoegen]['class'] = bestaande_klas; sla_db_op(); st.rerun()
+                
         with t2:
             if in_mijn_klas:
                 data = {"Leerling": [], "Rijkdom": [], "Taken Af": []}
@@ -714,26 +718,26 @@ elif nav == "Leraar Paneel" and is_teacher:
                 st.subheader("Gemaakte Taken")
                 st.bar_chart(df["Taken Af"])
             else: st.info("Geen leerlingen in klas.")
+            
         with t3:
             tt = st.text_input("Titel van de Taak"); tw = st.text_area("Woorden (nl=fr)")
             if st.button("Post Taak", type="primary"):
                 d = {l.split("=")[0].strip(): l.split("=")[1].strip() for l in tw.split("\n") if "=" in l}
                 st.session_state.db['tasks'].append({"id": str(random.randint(10000, 99999)), "title": tt, "words": d, "class": bestaande_klas}); sla_db_op(); st.toast("Taak geplaatst!", icon="🚀")
+                
         with t4:
             lt = st.text_input("Lijst Naam"); lw = st.text_area("Woordenlijst (nl=fr)")
             if st.button("Deel Lijst"):
                 d = {l.split("=")[0].strip(): l.split("=")[1].strip() for l in lw.split("\n") if "=" in l}
                 st.session_state.db['vocab_lists'].append({"title": lt, "words": d, "class": bestaande_klas}); sla_db_op(); st.toast("Gedeeld!"); st.rerun()
-        
-        # JUF ZIET SCHELDWOORDEN HIER!
+
         with t5:
             st.subheader("🚩 Gemarkeerde Chatberichten")
             flagged_msgs = [m for m in st.session_state.db['chat_messages'] if m.get('class') == bestaande_klas and m.get('flagged') == True]
             if flagged_msgs:
                 for m in flagged_msgs:
                     st.error(f"**{m['user'].capitalize()}** typte: '{m.get('original', 'Onbekend')}'")
-            else:
-                st.success("De chat is helemaal schoon en veilig!")
+            else: st.success("De chat is helemaal schoon en veilig!")
 
 elif nav == "Admin Room" and is_admin:
     st.title("👑 Admin Control Room")
@@ -743,7 +747,9 @@ elif nav == "Admin Room" and is_admin:
         pro_doel = st.selectbox("Kies Speler voor PRO", list(st.session_state.db['users'].keys()))
         is_nu_pro = st.session_state.db['is_pro'].get(pro_doel, False)
         if st.button("Geef / Verwijder PRO", type="primary"): st.session_state.db['is_pro'][pro_doel] = not is_nu_pro; sla_db_op(); st.rerun()
+        
     with t2:
+        st.subheader("🕵️ Speler Inspectie (Spy Mode)")
         spy_doel = st.selectbox("Wie wil je inspecteren?", list(st.session_state.db['users'].keys()), key="spy_select")
         if spy_doel:
             st.write(f"**Gegevens van {spy_doel.capitalize()}:**")
@@ -753,6 +759,7 @@ elif nav == "Admin Room" and is_admin:
             st.write(f"- Taken Voltooid: {len(st.session_state.db['completed_tasks'].get(spy_doel, []))}")
             if st.button("⚠️ Reset Wachtwoord naar '12345'", type="primary"):
                 st.session_state.db['users'][spy_doel]['pw'] = hash_pw("12345"); sla_db_op(); st.success(f"Wachtwoord gereset!")
+    
     with t3:
         huidige_msg = st.session_state.db.get('announcement', "")
         nieuwe_msg = st.text_input("Typ hier een bericht voor ALLE spelers:", value=huidige_msg)
@@ -763,6 +770,7 @@ elif nav == "Admin Room" and is_admin:
         st.session_state.db['lockdown'] = st.toggle("Activeer Global Lockdown", value=st.session_state.db.get('lockdown', False))
         l_msg = st.text_input("Lockdown Reden:", value=st.session_state.db.get('lockdown_msg', 'Onderhoud door Elliot'))
         if st.button("Opslaan Systeem Status"): st.session_state.db['lockdown_msg'] = l_msg; sla_db_op(); st.toast("Opgeslagen!")
+        
     with t4:
         col_a, col_b = st.columns(2)
         with col_a:
@@ -776,20 +784,28 @@ elif nav == "Admin Room" and is_admin:
                 if target_tag not in c_tag_list: c_tag_list.append(target_tag); sla_db_op(); st.rerun()
             if st.button("Verwijderen"):
                 if target_tag in c_tag_list: c_tag_list.remove(target_tag); sla_db_op(); st.rerun()
+                
     with t5:
         doel = st.selectbox("Speler", list(st.session_state.db['users'].keys()), key="muntdoel"); bedrag = st.number_input("Bedrag", value=100)
         if st.button("Geef Munten"): st.session_state.db['saldi'][doel] += bedrag; sla_db_op(); st.rerun()
-    
-    # ADMIN ZIET OOK ALLE SCHELDWOORDEN!
+        
     with t6:
         st.subheader("🚩 Gemarkeerde Chatberichten (Global)")
         flagged_msgs = [m for m in st.session_state.db['chat_messages'] if m.get('flagged') == True]
         if flagged_msgs:
-            for m in flagged_msgs:
-                st.error(f"**{m['user'].capitalize()}** (Klas {m.get('class')}) typte: '{m.get('original', 'Onbekend')}'")
-        else:
-            st.success("De chat is overal schoon en veilig!")
-            
+            for m in flagged_msgs: st.error(f"**{m['user'].capitalize()}** (Klas {m.get('class')}) typte: '{m.get('original', 'Onbekend')}'")
+            if st.button("Verwijder alle vlaggen (Schoonmaken)"):
+                for m in st.session_state.db['chat_messages']: m['flagged'] = False
+                sla_db_op(); st.rerun()
+        else: st.success("De chat is overal schoon en veilig!")
+        st.divider()
+        st.subheader("🤬 Scheldwoorden Filter")
+        huidige_woorden = ", ".join(st.session_state.db.get('bad_words', []))
+        nieuwe_woorden = st.text_area("Verboden woorden (gescheiden door komma):", value=huidige_woorden)
+        if st.button("Filter Opslaan", type="primary"):
+            st.session_state.db['bad_words'] = [w.strip().lower() for w in nieuwe_woorden.split(",") if w.strip()]
+            sla_db_op(); st.success("Filter opgeslagen!"); st.rerun()
+
     with t7:
         if st.button("Wis Alle Taken & Lijsten"):
             st.session_state.db['tasks'] = []; st.session_state.db['vocab_lists'] = []; st.session_state.db['completed_tasks'] = {u: [] for u in st.session_state.db['users'].keys()}; sla_db_op(); st.rerun()
