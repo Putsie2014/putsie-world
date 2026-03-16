@@ -14,16 +14,11 @@ except ImportError:
     st.error("Let op: 'groq' en 'pandas' ontbreken in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🎓 v30.0"
+SITE_TITLE = "Putsie WORLD 🎓 v1.0"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
 AI_PUNT_PRIJS = 1000
-
-# JOUW GITHUB URL VOOR DE PLAATJES
-IMG_BASE_URL = "https://raw.githubusercontent.com/JOUW_NAAM/putsie-world/main/assets/"
-
-st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="expanded")
 
 # --- SECURITY & MODERATIE ---
 def hash_pw(password):
@@ -31,7 +26,8 @@ def hash_pw(password):
 
 def censor_text(text):
     """Vervangt verboden woorden door *** en geeft een rood vlaggetje af."""
-    censored = text
+    # ANTI-SPAM: Knip berichten af op maximaal 500 tekens!
+    censored = text[:500] 
     flagged = False
     bad_words_list = st.session_state.db.get('bad_words', [])
     for word in bad_words_list:
@@ -41,6 +37,8 @@ def censor_text(text):
     return censored, flagged
 
 # --- 2. PREMIUM STYLING & THEMA'S ---
+st.set_page_config(page_title=SITE_TITLE, layout="wide", initial_sidebar_state="expanded")
+
 THEMES = {
     "Standaard": "linear-gradient(-45deg, #1a2a6c, #b21f1f, #fdbb2d)",
     "Matrix": "linear-gradient(180deg, #000000, #003300, #000000)",
@@ -64,12 +62,12 @@ def apply_premium_design(theme_bg):
         .hacker-term {{ background-color: #050505 !important; color: #0f0 !important; font-family: 'Courier New', Courier, monospace !important; padding: 25px; border-radius: 12px; border: 2px solid #0f0; box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); }}
         input, textarea, select {{ color: black !important; text-shadow: none !important; border-radius: 8px !important; }}
         
-        /* BADGES */
+        /* BADGES & TITLES */
         .custom-badge {{ color: white; padding: 2px 8px; border-radius: 10px; font-weight: bold; font-size: 12px; margin-right: 5px; display: inline-block; text-shadow: 1px 1px 2px black; border: 1px solid rgba(255,255,255,0.3); }}
         .pro-badge {{ background: linear-gradient(45deg, #FFD700, #FF8C00); color: white; padding: 2px 8px; border-radius: 10px; font-weight: 900; font-size: 12px; margin-right: 5px; display: inline-block; text-shadow: 1px 1px 2px black; box-shadow: 0 0 10px rgba(255,215,0,0.8); animation: pulse 2s infinite; }}
         @keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}
         .mood-text {{ font-style: italic; color: rgba(255,255,255,0.7) !important; font-size: 0.9em; }}
-        .title-badge {{ background: #9c27b0; color: white; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-style: italic; margin-right: 5px; box-shadow: 0 0 5px rgba(156,39,176,0.5); }}
+        .title-badge {{ background: rgba(0,0,0,0.5); color: #00d2ff; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-style: italic; margin-right: 5px; border: 1px solid #00d2ff; box-shadow: 0 0 5px rgba(0,210,255,0.5); }}
         .lvl-badge {{ background: #4CAF50; color: white; padding: 2px 6px; border-radius: 5px; font-size: 11px; margin-right: 5px; box-shadow: 0 0 5px rgba(76,175,80,0.5); }}
         
         /* EILAND & INVENTORY */
@@ -98,9 +96,20 @@ PET_TYPES = {
     "Hond": {"prijs": 2000, "emoji": "🐕"}, "Kat": {"prijs": 2000, "emoji": "🐈"}, 
     "Papegaai": {"prijs": 4000, "emoji": "🦜"}, "Alien": {"prijs": 10000, "emoji": "👽"}
 }
+TITEL_SHOP = {
+    "Student": 0, "Brugpieper": 100, "Gezellig": 500, "Spaarvarken": 1000, 
+    "De Rijke": 5000, "Tycoon": 10000, "Putsie Legende": 25000, "God van de Wereld": 100000
+}
 RAADSELS = [
     {"q": "Wat heeft tanden maar kan niet bijten?", "a": "kam"}, {"q": "Wat wordt natter naarmate het meer droogt?", "a": "handdoek"},
-    {"q": "Ik heb steden maar geen huizen, water maar geen vissen.", "a": "landkaart"}, {"q": "Hoe meer je ervan weghaalt, hoe groter het wordt.", "a": "gat"}
+    {"q": "Ik heb steden maar geen huizen, water maar geen vissen.", "a": "landkaart"}, {"q": "Hoe meer je ervan weghaalt, hoe groter het wordt.", "a": "gat"},
+    {"q": "Wat behoort tot jou, maar wordt meer door anderen gebruikt?", "a": "naam"}
+]
+TYPE_ZINNEN = [
+    "De snelle bruine vos springt over de luie hond.",
+    "Putsie is de allerbeste assistent van de hele wereld!",
+    "Een goede hacker beveiligt zijn database met encryptie.",
+    "In de virtuele dierenwinkel kun je een draak kopen."
 ]
 AVATARS = ["👤", "😎", "🤓", "🤠", "🤖", "👽", "👻", "🐵", "🦁", "🦄", "🐉", "🦊", "👑", "🚀", "💎", "🔥", "⚡"]
 WEER_TYPES = ["☀️ Zonnig", "🌧️ Regenachtig", "❄️ Sneeuw", "⚡ Onweer", "🌈 Regenboog"]
@@ -135,7 +144,7 @@ safe_defaults = {
     "player_tags": {}, "streaks": {}, "avatars": {}, "moods": {}, "islands": {}, 
     "island_levels": {}, "inventory": {}, "island_names": {}, "island_likes": {}, "is_pro": {},
     "unlocked_achievements": {}, "equipped_achievement": {}, "themes": {}, "pets": {},
-    "has_done_tour": {}, # NIEUW: Tutorial tracker
+    "has_done_tour": {}, "purchased_titles": {}, "active_title": {},
     "islands_enabled": False, "lockdown": False, "lockdown_msg": "Systeem onderhoud door Elliot",
     "announcement": "", "bad_words": ["stom", "dombo", "sukkel", "kut", "kloot", "bitch", "shit", "fuck", "lelijk", "haat"]
 }
@@ -163,6 +172,8 @@ def verifieer_speler_data(naam):
     d['equipped_achievement'].setdefault(naam, "")
     d['themes'].setdefault(naam, "Standaard")
     d['pets'].setdefault(naam, {"type": None, "name": "", "hunger": 100, "happiness": 100, "level": 1})
+    d['purchased_titles'].setdefault(naam, ["Student"])
+    d['active_title'].setdefault(naam, "Student")
     d['users'][naam].setdefault('class', "")
     d['has_done_tour'].setdefault(naam, False)
     
@@ -228,7 +239,7 @@ if not st.session_state.db['has_done_tour'].get(mijn_naam, False):
         st.markdown(f"""
         <div class='tour-box'>
             <h1 style='color: #00d2ff;'>🤖 Hoi {mijn_naam.capitalize()}! Ik ben Putsie!</h1>
-            <h3>Welkom in jouw nieuwe wereld! Voordat je begint, hier 3 snelle tips:</h3>
+            <h3>Welkom in versie 1.0! Jouw nieuwe, betere wereld! Hier zijn 3 snelle tips:</h3>
             <p style='font-size: 18px; text-align: left;'>
             <b>1. 💰 De Bank:</b> Zet je munten op de bank om elke dag 5% rente te krijgen!<br><br>
             <b>2. 🏫 Jouw Klas:</b> Doe opdrachten in de 'Klas' tab om supersnel rijk te worden.<br><br>
@@ -238,14 +249,14 @@ if not st.session_state.db['has_done_tour'].get(mijn_naam, False):
         </div>
         """, unsafe_allow_html=True)
         if st.button("🚀 Begrepen! Geef mij mijn Start-Bonus en Let's Go!", type="primary", use_container_width=True):
-            st.session_state.db['saldi'][mijn_naam] += 250 # Leuke welkomstbonus!
+            st.session_state.db['saldi'][mijn_naam] += 250 
             st.session_state.db['has_done_tour'][mijn_naam] = True
             sla_db_op(); st.balloons(); st.rerun()
-    st.stop() # Stop de rest van de code totdat ze de tour accepteren!
+    st.stop()
 
 # --- TERMINAL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V30.0</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V1.0</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown": st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
     elif cmd.startswith("/openaccount"):
@@ -264,7 +275,7 @@ is_pro = st.session_state.db['is_pro'].get(mijn_naam, False)
 mijn_klas = st.session_state.db['users'][mijn_naam].get("class", "")
 
 if st.session_state.db.get('lockdown') and not is_admin:
-    st.markdown(f"<div style='text-align:center; padding:100px; background: rgba(255,0,0,0.5); border-radius:20px;'><h1>🚫 LOCKDOWN</h1><h3>{st.session_state.db['lockdown_msg']}</h3></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; padding:100px; background: rgba(255,0,0,0.5); border-radius:20px;'><h1>🚫 SYSTEM LOCKDOWN</h1><h3>{st.session_state.db['lockdown_msg']}</h3></div>", unsafe_allow_html=True)
     if st.button("Uitloggen"): st.session_state.ingelogd = False; st.rerun()
     st.stop()
 
@@ -275,12 +286,7 @@ mijn_tags = st.session_state.db['player_tags'][mijn_naam]
 mijn_avatar = st.session_state.db['avatars'][mijn_naam]
 mijn_streak_data = st.session_state.db['streaks'][mijn_naam]
 mijn_pet = st.session_state.db['pets'][mijn_naam]
-
-if mijn_level < 5: speler_titel = "Brugpieper"
-elif mijn_level < 10: speler_titel = "Gevorderde"
-elif mijn_level < 20: speler_titel = "Pro Speler"
-elif mijn_level < 50: speler_titel = "Putsie Legende"
-else: speler_titel = "God van Putsie World"
+mijn_gekozen_titel = st.session_state.db['active_title'][mijn_naam]
 
 gisteren = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -292,7 +298,7 @@ with st.sidebar:
         badge_html += f"<span class='custom-badge' style='background:{color}'>{t_name}</span>"
     
     st.markdown(f"<h3>{mijn_avatar} {mijn_naam.capitalize()}</h3>{badge_html}", unsafe_allow_html=True)
-    st.markdown(f"<span class='title-badge'>{speler_titel}</span> ⭐ Lvl: {mijn_level}", unsafe_allow_html=True)
+    st.markdown(f"<span class='title-badge'>{mijn_gekozen_titel}</span> ⭐ Lvl: {mijn_level}", unsafe_allow_html=True)
     st.caption(f"🔥 Streak: {mijn_streak_data['count']} dagen | {huidig_weer}")
     
     col_s1, col_s2 = st.columns(2)
@@ -346,28 +352,38 @@ if nav == "Profiel":
     with c1:
         st.subheader("Instellingen")
         nieuwe_ava = st.selectbox("Kies Avatar", AVATARS, index=AVATARS.index(mijn_avatar) if mijn_avatar in AVATARS else 0)
-        
-        # XSS Beveiliging op inputs
         nieuwe_mood = html.escape(st.text_input("Wat is je mood in de chat?", value=st.session_state.db['moods'].get(mijn_naam, ""), max_chars=30))
         huidige_eiland_naam = st.session_state.db['island_names'].get(mijn_naam, f"Eiland van {mijn_naam.capitalize()}")
         nieuwe_eiland_naam = html.escape(st.text_input("Naam van jouw Eiland (Bordje):", value=huidige_eiland_naam, max_chars=25))
         nieuw_thema = st.selectbox("Kies Website Thema", list(THEMES.keys()), index=list(THEMES.keys()).index(mijn_thema_naam))
+        
+        # NIEUW: Titels Equippen!
+        gekochte_titels = st.session_state.db['purchased_titles'][mijn_naam]
+        nieuwe_titel = st.selectbox("Draag een Titel", gekochte_titels, index=gekochte_titels.index(mijn_gekozen_titel) if mijn_gekozen_titel in gekochte_titels else 0)
         
         if st.button("Profiel Opslaan", type="primary"):
             st.session_state.db['avatars'][mijn_naam] = nieuwe_ava
             st.session_state.db['moods'][mijn_naam] = nieuwe_mood
             st.session_state.db['island_names'][mijn_naam] = nieuwe_eiland_naam
             st.session_state.db['themes'][mijn_naam] = nieuw_thema
+            st.session_state.db['active_title'][mijn_naam] = nieuwe_titel
             sla_db_op(); st.toast("Opgeslagen!", icon="✅"); st.rerun()
             
     with c2:
-        st.subheader("Jouw Badges")
-        if is_pro: st.markdown("<span class='pro-badge'>🌟 PUTSIE PRO LID</span><br>Geniet van 2x dagelijkse munten!", unsafe_allow_html=True)
-        if mijn_tags:
-            for t in mijn_tags:
-                c = st.session_state.db['custom_tags_v2'].get(t, "#888888")
-                st.markdown(f"<span class='custom-badge' style='background:{c}'>{t}</span>", unsafe_allow_html=True)
-        elif not is_pro: st.write("Je hebt nog geen badges.")
+        st.subheader("🛒 Titel Winkel")
+        cols_t = st.columns(2)
+        for i, (t_naam, t_prijs) in enumerate(TITEL_SHOP.items()):
+            with cols_t[i % 2]:
+                if t_naam in gekochte_titels:
+                    st.markdown(f"<div class='achievement-card' style='opacity:0.5;'><b>{t_naam}</b><br>In bezit</div><br>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div class='achievement-card'><b>{t_naam}</b><br>{t_prijs} 🪙</div>", unsafe_allow_html=True)
+                    if st.button(f"Koop", key=f"buy_title_{t_naam}"):
+                        if mijn_saldo >= t_prijs:
+                            st.session_state.db['saldi'][mijn_naam] -= t_prijs
+                            st.session_state.db['purchased_titles'][mijn_naam].append(t_naam)
+                            sla_db_op(); st.toast(f"Titel {t_naam} gekocht!"); st.rerun()
+                        else: st.error("Te weinig munten!")
 
 elif nav == "Putsie Bank":
     st.title("🏦 De Putsie Bank")
@@ -495,15 +511,15 @@ elif nav == "Klas & Taken":
                 for m in [msg for msg in st.session_state.db['chat_messages'] if msg.get('class') == mijn_klas]:
                     u = m['user']; ava = st.session_state.db['avatars'].get(u, "👤"); mood = st.session_state.db['moods'].get(u, "")
                     tags = st.session_state.db['player_tags'].get(u, [])
+                    u_titel = st.session_state.db['active_title'].get(u, "Student")
                     u_pro = "<span class='pro-badge'>🌟 PRO</span>" if st.session_state.db['is_pro'].get(u, False) else ""
                     b_html = "".join([f"<span class='custom-badge' style='background:{st.session_state.db['custom_tags_v2'].get(tn, '#888888')}'>{tn}</span>" for tn in tags])
-                    st.markdown(f"{ava} **{u.capitalize()}** {u_pro}{b_html} <br> <span class='mood-text'>{mood}</span> <br> {m['text']}", unsafe_allow_html=True)
+                    st.markdown(f"{ava} <span class='title-badge'>{u_titel}</span> **{u.capitalize()}** {u_pro}{b_html} <br> <span class='mood-text'>{mood}</span> <br> {m['text']}", unsafe_allow_html=True)
             
             if p := st.chat_input("Typ een bericht..."):
-                veilig_bericht = html.escape(p)
-                gecensureerd_bericht, is_flagged = censor_text(veilig_bericht)
+                veilig_bericht, is_flagged = censor_text(html.escape(p))
                 st.session_state.db['chat_messages'].append({
-                    "user": mijn_naam, "text": gecensureerd_bericht, "original": veilig_bericht, "class": mijn_klas, "flagged": is_flagged
+                    "user": mijn_naam, "text": veilig_bericht, "original": html.escape(p), "class": mijn_klas, "flagged": is_flagged
                 })
                 sla_db_op(); st.rerun()
 
@@ -520,32 +536,30 @@ elif nav == "Frans Lab":
 
 elif nav == "🤖 Putsie AI Hulp":
     st.title("🤖 Putsie de AI Assistent")
-    st.write("Vraag Putsie om hulp bij je huiswerk!")
     c1, c2 = st.columns([2, 1])
     with c2:
         if st.button(f"Koop 1 💎 voor {AI_PUNT_PRIJS} 🪙", use_container_width=True):
             if mijn_saldo >= AI_PUNT_PRIJS: st.session_state.db['saldi'][mijn_naam] -= AI_PUNT_PRIJS; st.session_state.db['ai_points'][mijn_naam] += 1; sla_db_op(); st.rerun()
             else: st.error("Te weinig munten!")
     with c1:
-        vraag = st.text_area("Wat wil je weten?")
-        if st.button("Vraag Putsie (-1 💎)", type="primary"):
+        vraag = st.text_area("Stel je vraag aan Putsie:")
+        if st.button("Vraag stellen (-1 💎)", type="primary"):
             if st.session_state.db['ai_points'].get(mijn_naam, 0) > 0:
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-                    # Putsie Prompt Injectie!
                     messages = [
-                        {"role": "system", "content": "Je bent Putsie, een vrolijke, grappige en behulpzame AI assistent in het spel Putsie WORLD. Je antwoordt altijd in het Nederlands, gebruikt emoji's en helpt studenten met hun vragen."},
+                        {"role": "system", "content": "Je bent Putsie, een vrolijke, behulpzame assistent in het educatieve spel Putsie WORLD. Geef af en toe een leuk complimentje."},
                         {"role": "user", "content": vraag}
                     ]
                     res = client.chat.completions.create(messages=messages, model=MODEL_NAAM)
                     st.session_state.ai_res = res.choices[0].message.content; st.session_state.db['ai_points'][mijn_naam] -= 1; sla_db_op()
-                except Exception as e: st.error(f"AI Fout. Groq Key mist?")
+                except Exception as e: st.error(f"AI Fout.")
             else: st.warning("Te weinig AI punten!")
         if 'ai_res' in st.session_state: st.info(st.session_state.ai_res)
 
 elif nav == "Game Hal":
     st.title("🎮 De Game Hal")
-    t1, t2 = st.tabs(["🧮 Rekenwonder", "🔤 Woordhusselaar"])
+    t1, t2, t3 = st.tabs(["🧮 Rekenwonder", "🔤 Woordhusselaar", "⌨️ Typemachine"])
     with t1:
         st.subheader("Rekenwonder")
         if 'math_q' not in st.session_state:
@@ -571,6 +585,16 @@ elif nav == "Game Hal":
             if st.button("Controleer Woord"):
                 if s_ans == st.session_state.scramble_w: st.session_state.db['saldi'][mijn_naam] += 20; sla_db_op(); st.toast("+20 🪙"); del st.session_state.scramble_w; st.rerun()
                 else: st.error("Fout!")
+    with t3:
+        st.subheader("Typemachine")
+        st.write("Typ de zin **exact** over. Inclusief hoofdletters en leestekens! (Beloning: 30 🪙)")
+        if 'type_q' not in st.session_state: st.session_state.type_q = random.choice(TYPE_ZINNEN)
+        with st.container(border=True):
+            st.markdown(f"### *{st.session_state.type_q}*")
+            t_ans = st.text_input("Typ hier:")
+            if st.button("Verstuur Zin"):
+                if t_ans == st.session_state.type_q: st.session_state.db['saldi'][mijn_naam] += 30; sla_db_op(); st.toast("Snel getypt! +30 🪙"); del st.session_state.type_q; st.rerun()
+                else: st.error("Kijk goed naar spelfouten of hoofdletters!")
 
 elif nav == "Raadsels":
     st.title("🧠 Putsie's Hersenkrakers")
@@ -647,7 +671,7 @@ elif nav == "Eiland Tycoon":
 
     with t2:
         st.subheader("🎁 Mystery Box")
-        st.write("Voor 1500 🪙 krijg je een random item. Misschien wel het Kasteel!")
+        st.write("Voor 1500 🪙 krijg je een willekeurig item. Misschien wel het Kasteel!")
         if st.button("Koop Mystery Box (1500 🪙)", type="primary"):
             if mijn_saldo >= 1500:
                 st.session_state.db['saldi'][mijn_naam] -= 1500
@@ -655,9 +679,8 @@ elif nav == "Eiland Tycoon":
                 st.session_state.db['inventory'][mijn_naam][gewonnen] = st.session_state.db['inventory'][mijn_naam].get(gewonnen, 0) + 1
                 sla_db_op(); st.balloons(); st.success(f"🎉 Wauw! Je hebt een {gewonnen} ({SHOP_ITEMS[gewonnen]['emoji']}) gekregen!")
             else: st.error("Te weinig munten!")
-            
         st.divider()
-        st.subheader("🛒 Normale Bouwmarkt")
+        
         cols = st.columns(4)
         for i, (item, data) in enumerate(SHOP_ITEMS.items()):
             with cols[i % 4]:
