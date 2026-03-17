@@ -14,7 +14,7 @@ except ImportError:
     st.error("Let op: 'groq' en 'pandas' ontbreken in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🎓 v1.0"
+SITE_TITLE = "Putsie WORLD 🎓 v1.02"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -56,8 +56,11 @@ def apply_premium_design(theme_bg):
             border: 1px solid rgba(255, 255, 255, 0.3); padding: 15px; color: white !important; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }}
         p, span, label, h1, h2, h3 {{ color: white !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }}
-        .stButton button {{ transition: all 0.3s ease 0s !important; border-radius: 10px !important; font-weight: bold; border: 1px solid rgba(255,255,255,0.2) !important; }}
+        
+        /* IPAD BUTTON FIX */
+        .stButton button {{ transition: all 0.3s ease 0s !important; border-radius: 10px !important; font-weight: bold; border: 1px solid rgba(255,255,255,0.2) !important; white-space: normal !important; height: auto !important; min-height: 2.5rem; }}
         .stButton button:hover {{ transform: translateY(-3px) scale(1.02) !important; box-shadow: 0 5px 15px rgba(0, 210, 255, 0.6) !important; border-color: #00d2ff !important; }}
+        
         .hacker-term {{ background-color: #050505 !important; color: #0f0 !important; font-family: 'Courier New', Courier, monospace !important; padding: 25px; border-radius: 12px; border: 2px solid #0f0; box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); }}
         input, textarea, select {{ color: black !important; text-shadow: none !important; border-radius: 8px !important; }}
         
@@ -69,8 +72,14 @@ def apply_premium_design(theme_bg):
         .title-badge {{ background: rgba(0,0,0,0.5); color: #00d2ff; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-style: italic; margin-right: 5px; border: 1px solid #00d2ff; box-shadow: 0 0 5px rgba(0,210,255,0.5); }}
         .lvl-badge {{ background: #4CAF50; color: white; padding: 2px 6px; border-radius: 5px; font-size: 11px; margin-right: 5px; box-shadow: 0 0 5px rgba(76,175,80,0.5); }}
         
-        /* EILAND & INVENTORY */
-        .game-map {{ text-align: center; line-height: 1.05; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 15px; border: 3px solid #fdbb2d; display: inline-block; box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5); }}
+        /* IPAD EILAND FIX (Scrollbaar en geen afbreek-regels) */
+        .game-map-wrapper {{ width: 100%; overflow-x: auto; text-align: center; padding-bottom: 10px; }}
+        .game-map-wrapper::-webkit-scrollbar {{ height: 8px; }}
+        .game-map-wrapper::-webkit-scrollbar-track {{ background: rgba(0,0,0,0.2); border-radius: 10px; }}
+        .game-map-wrapper::-webkit-scrollbar-thumb {{ background: #fdbb2d; border-radius: 10px; }}
+        
+        .game-map {{ text-align: center; line-height: 1.05; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 15px; border: 3px solid #fdbb2d; display: inline-block; box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5); white-space: nowrap; }}
+        
         .island-sign {{ font-size: 24px; color: white; background: rgba(139, 69, 19, 0.8); padding: 5px 20px; border-radius: 5px; border: 2px solid #5C4033; font-weight: bold; margin-bottom: 15px; display: inline-block; text-shadow: 2px 2px 4px black; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }}
         .net-worth {{ font-size: 20px; color: gold; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; display: inline-block; margin-bottom: 10px; border: 1px solid gold;}}
         .achievement-card {{ background: rgba(255, 215, 0, 0.1); border: 1px solid gold; padding: 10px; border-radius: 10px; text-align: center; transition: 0.3s; }}
@@ -255,7 +264,7 @@ if not st.session_state.db['has_done_tour'].get(mijn_naam, False):
 
 # --- TERMINAL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V1.0</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V1.02</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown": st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
     elif cmd.startswith("/openaccount"):
@@ -626,7 +635,8 @@ elif nav == "Eiland Tycoon":
             if "Sneeuw" in huidig_weer: bg_kleur = "rgba(255,255,255,0.4)"
             elif "Regen" in huidig_weer: bg_kleur = "rgba(0,0,100,0.4)"
             
-            map_html = f"<div class='game-map' style='font-size: {fs}px; background: {bg_kleur};'>"
+            # CSS wrapper voor iPad / Mobiel (scrollbaar maken)
+            map_html = f"<div class='game-map-wrapper'><div class='game-map' style='font-size: {fs}px; background: {bg_kleur};'>"
             for r in range(mijn_grid_size):
                 row_str = ""
                 for c in range(mijn_grid_size):
@@ -636,7 +646,7 @@ elif nav == "Eiland Tycoon":
                         if r == 0 or r == mijn_grid_size - 1 or c == 0 or c == mijn_grid_size - 1: row_str += "🟦"
                         else: row_str += "🟩" if "Sneeuw" not in huidig_weer else "⬜"
                 map_html += row_str + "<br>"
-            st.markdown(map_html + "</div>", unsafe_allow_html=True)
+            st.markdown(map_html + "</div></div>", unsafe_allow_html=True)
 
         with c_controls:
             st.subheader("🛠️ Bouw Paneel")
@@ -718,7 +728,8 @@ elif nav == "Eiland Tycoon":
             _, col_visitor, _ = st.columns([1, 2, 1])
             with col_visitor:
                 fs_t = max(14, int(160 / t_size))
-                map_html = f"<div class='game-map' style='font-size: {fs_t}px;'>"
+                # IPAD BEZOEKERS MAP FIX
+                map_html = f"<div class='game-map-wrapper'><div class='game-map' style='font-size: {fs_t}px;'>"
                 for r in range(t_size):
                     row_str = ""
                     for c in range(t_size):
@@ -728,7 +739,7 @@ elif nav == "Eiland Tycoon":
                             if r == 0 or r == t_size - 1 or c == 0 or c == t_size - 1: row_str += "🟦"
                             else: row_str += "🟩"
                     map_html += row_str + "<br>"
-                st.markdown(map_html + "</div>", unsafe_allow_html=True)
+                st.markdown(map_html + "</div></div>", unsafe_allow_html=True)
                 
             col_lk, col_bk = st.columns(2)
             if col_lk.button(f"❤️ Geef een Like ({t_likes})", use_container_width=True):
