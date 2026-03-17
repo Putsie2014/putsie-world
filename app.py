@@ -26,7 +26,6 @@ def hash_pw(password):
 
 def censor_text(text):
     """Vervangt verboden woorden door *** en geeft een rood vlaggetje af."""
-    # ANTI-SPAM: Knip berichten af op maximaal 500 tekens!
     censored = text[:500] 
     flagged = False
     bad_words_list = st.session_state.db.get('bad_words', [])
@@ -145,7 +144,7 @@ safe_defaults = {
     "island_levels": {}, "inventory": {}, "island_names": {}, "island_likes": {}, "is_pro": {},
     "unlocked_achievements": {}, "equipped_achievement": {}, "themes": {}, "pets": {},
     "has_done_tour": {}, "purchased_titles": {}, "active_title": {},
-    "islands_enabled": False, "lockdown": False, "lockdown_msg": "Systeem onderhoud door Elliot",
+    "lockdown": False, "lockdown_msg": "Systeem onderhoud door Elliot",
     "announcement": "", "bad_words": ["stom", "dombo", "sukkel", "kut", "kloot", "bitch", "shit", "fuck", "lelijk", "haat"]
 }
 for key, default_val in safe_defaults.items():
@@ -320,9 +319,7 @@ with st.sidebar:
     if hoofd_menu == "👤 Mijn Leven": nav = st.radio("Ga naar:", ["Profiel", "Putsie Bank", "Dierenwinkel"])
     elif hoofd_menu == "🏫 School & Leren": nav = st.radio("Ga naar:", ["Klas & Taken", "Frans Lab", "🤖 Putsie AI Hulp"])
     elif hoofd_menu == "🎮 Games & Eiland":
-        opties = ["Game Hal", "Raadsels"]
-        if st.session_state.db.get('islands_enabled', False): opties.insert(0, "Eiland Tycoon")
-        nav = st.radio("Ga naar:", opties)
+        nav = st.radio("Ga naar:", ["Eiland Tycoon", "Game Hal", "Raadsels"])
     elif hoofd_menu == "🛠️ Beheer":
         b_opties = []
         if is_teacher: b_opties.append("Leraar Paneel")
@@ -357,7 +354,6 @@ if nav == "Profiel":
         nieuwe_eiland_naam = html.escape(st.text_input("Naam van jouw Eiland (Bordje):", value=huidige_eiland_naam, max_chars=25))
         nieuw_thema = st.selectbox("Kies Website Thema", list(THEMES.keys()), index=list(THEMES.keys()).index(mijn_thema_naam))
         
-        # NIEUW: Titels Equippen!
         gekochte_titels = st.session_state.db['purchased_titles'][mijn_naam]
         nieuwe_titel = st.selectbox("Draag een Titel", gekochte_titels, index=gekochte_titels.index(mijn_gekozen_titel) if mijn_gekozen_titel in gekochte_titels else 0)
         
