@@ -14,25 +14,43 @@ except ImportError:
     st.error("Let op: 'groq' en 'pandas' ontbreken in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🎓 v1.03"
+SITE_TITLE = "Putsie WORLD 🎓 v1.05"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
 AI_PUNT_PRIJS = 1000
 
-# --- SECURITY & MODERATIE ---
+# --- SECURITY & SMART MODERATIE ---
 def hash_pw(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def censor_text(text):
-    """Vervangt verboden woorden door *** en geeft een rood vlaggetje af."""
-    censored = text[:500] 
+    """Slimme censuur: herkent dubbele letters, leestekens ertussen en leetspeak (0 ipv o)."""
+    censored = text[:500] # Anti-spam limiet
     flagged = False
     bad_words_list = st.session_state.db.get('bad_words', [])
+    
     for word in bad_words_list:
-        if word and re.search(r'\b' + re.escape(word) + r'\b', censored, re.IGNORECASE):
-            censored = re.sub(r'\b' + re.escape(word) + r'\b', '***', censored, flags=re.IGNORECASE)
+        if not word.strip() or len(word) < 2: 
+            continue
+            
+        patroon = r'\b'
+        for letter in word:
+            if letter in 'ckq': patroon += r'[ckq]+[\W_]*'
+            elif letter in 'uvw': patroon += r'[uvw]+[\W_]*'
+            elif letter in 'i1!l': patroon += r'[i1!l]+[\W_]*'
+            elif letter in 'o0': patroon += r'[o0]+[\W_]*'
+            elif letter in 'a@4': patroon += r'[a@4]+[\W_]*'
+            elif letter in 's5$': patroon += r'[s5$]+[\W_]*'
+            elif letter in 'e3': patroon += r'[e3]+[\W_]*'
+            else: patroon += re.escape(letter) + r'+[\W_]*'
+        
+        patroon = patroon.rstrip(r'[\W_]*') + r'\b'
+        
+        if re.search(patroon, censored, re.IGNORECASE):
+            censored = re.sub(patroon, '***', censored, flags=re.IGNORECASE)
             flagged = True
+            
     return censored, flagged
 
 # --- 2. PREMIUM STYLING & THEMA'S ---
@@ -56,11 +74,8 @@ def apply_premium_design(theme_bg):
             border: 1px solid rgba(255, 255, 255, 0.3); padding: 15px; color: white !important; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }}
         p, span, label, h1, h2, h3 {{ color: white !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }}
-        
-        /* IPAD BUTTON FIX */
         .stButton button {{ transition: all 0.3s ease 0s !important; border-radius: 10px !important; font-weight: bold; border: 1px solid rgba(255,255,255,0.2) !important; white-space: normal !important; height: auto !important; min-height: 2.5rem; }}
         .stButton button:hover {{ transform: translateY(-3px) scale(1.02) !important; box-shadow: 0 5px 15px rgba(0, 210, 255, 0.6) !important; border-color: #00d2ff !important; }}
-        
         .hacker-term {{ background-color: #050505 !important; color: #0f0 !important; font-family: 'Courier New', Courier, monospace !important; padding: 25px; border-radius: 12px; border: 2px solid #0f0; box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); }}
         input, textarea, select {{ color: black !important; text-shadow: none !important; border-radius: 8px !important; }}
         
@@ -72,14 +87,12 @@ def apply_premium_design(theme_bg):
         .title-badge {{ background: rgba(0,0,0,0.5); color: #00d2ff; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-style: italic; margin-right: 5px; border: 1px solid #00d2ff; box-shadow: 0 0 5px rgba(0,210,255,0.5); }}
         .lvl-badge {{ background: #4CAF50; color: white; padding: 2px 6px; border-radius: 5px; font-size: 11px; margin-right: 5px; box-shadow: 0 0 5px rgba(76,175,80,0.5); }}
         
-        /* IPAD EILAND FIX (Scrollbaar en geen afbreek-regels) */
+        /* EILAND & INVENTORY */
         .game-map-wrapper {{ width: 100%; overflow-x: auto; text-align: center; padding-bottom: 10px; }}
         .game-map-wrapper::-webkit-scrollbar {{ height: 8px; }}
         .game-map-wrapper::-webkit-scrollbar-track {{ background: rgba(0,0,0,0.2); border-radius: 10px; }}
         .game-map-wrapper::-webkit-scrollbar-thumb {{ background: #fdbb2d; border-radius: 10px; }}
-        
         .game-map {{ text-align: center; line-height: 1.05; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 15px; border: 3px solid #fdbb2d; display: inline-block; box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5); white-space: nowrap; }}
-        
         .island-sign {{ font-size: 24px; color: white; background: rgba(139, 69, 19, 0.8); padding: 5px 20px; border-radius: 5px; border: 2px solid #5C4033; font-weight: bold; margin-bottom: 15px; display: inline-block; text-shadow: 2px 2px 4px black; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }}
         .net-worth {{ font-size: 20px; color: gold; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; display: inline-block; margin-bottom: 10px; border: 1px solid gold;}}
         .achievement-card {{ background: rgba(255, 215, 0, 0.1); border: 1px solid gold; padding: 10px; border-radius: 10px; text-align: center; transition: 0.3s; }}
@@ -127,34 +140,26 @@ random.seed(vandaag)
 huidig_weer = random.choice(WEER_TYPES)
 random.seed() 
 
-# --- 3. ONVERWOESTBARE DATABASE ENGINE (IRONCLAD UPDATE) ---
+# --- 3. BULLETPROOF DATABASE ENGINE ---
 def laad_db():
     basis_db = {"users": {"elliot": {"pw": hash_pw("Putsie"), "role": "admin", "class": "ADMIN-000"}}}
     if os.path.exists(DB_FILE):
-        if os.path.getsize(DB_FILE) == 0:
-            return basis_db # Fix voor leeg bestand probleem
+        if os.path.getsize(DB_FILE) == 0: return basis_db 
         try:
-            with open(DB_FILE, "r", encoding="utf-8") as f: 
-                return json.load(f)
-        except Exception as e:
-            # RAMPEN PROTOCOL: Als het bestand stuk is, hernoem het in plaats van wissen!
+            with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
+        except Exception:
             backup_naam = DB_FILE + f".corrupt_{int(datetime.now().timestamp())}"
-            try:
-                os.rename(DB_FILE, backup_naam)
+            try: os.rename(DB_FILE, backup_naam)
             except: pass
             return basis_db
     return basis_db
 
 def sla_db_op():
-    # ATOMIC SAVES: Schrijf naar een tijdelijk bestand en vervang het in één milliseconde.
-    # Hierdoor kan de database nooit meer half-opgeslagen of leeg raken als de server crasht.
     temp_file = DB_FILE + ".tmp"
     try:
-        with open(temp_file, "w", encoding="utf-8") as f: 
-            json.dump(st.session_state.db, f, separators=(',', ':'))
+        with open(temp_file, "w", encoding="utf-8") as f: json.dump(st.session_state.db, f, separators=(',', ':'))
         os.replace(temp_file, DB_FILE)
-    except Exception as e: 
-        st.error(f"🚨 Fout bij veilig opslaan: {e}")
+    except Exception as e: st.error(f"🚨 Fout bij veilig opslaan: {e}")
 
 if 'db' not in st.session_state: st.session_state.db = laad_db()
 
@@ -169,7 +174,8 @@ safe_defaults = {
     "unlocked_achievements": {}, "equipped_achievement": {}, "themes": {}, "pets": {},
     "has_done_tour": {}, "purchased_titles": {}, "active_title": {},
     "lockdown": False, "lockdown_msg": "Systeem onderhoud door Elliot",
-    "announcement": "", "bad_words": ["stom", "dombo", "sukkel", "kut", "kloot", "bitch", "shit", "fuck", "lelijk", "haat"]
+    "announcement": "", 
+    "bad_words": ["stom", "dombo", "sukkel", "kut", "kloot", "bitch", "shit", "fuck", "lelijk", "haat", "idioot", "debiel", "slet", "hoer"]
 }
 for key, default_val in safe_defaults.items():
     st.session_state.db.setdefault(key, default_val)
@@ -262,11 +268,11 @@ if not st.session_state.db['has_done_tour'].get(mijn_naam, False):
         st.markdown(f"""
         <div class='tour-box'>
             <h1 style='color: #00d2ff;'>🤖 Hoi {mijn_naam.capitalize()}! Ik ben Putsie!</h1>
-            <h3>Welkom in versie 1.03! Jouw nieuwe, betere wereld! Hier zijn 3 snelle tips:</h3>
+            <h3>Welkom in versie 1.05! Jouw nieuwe, betere wereld! Hier zijn 3 snelle tips:</h3>
             <p style='font-size: 18px; text-align: left;'>
             <b>1. 💰 De Bank:</b> Zet je munten op de bank om elke dag 5% rente te krijgen!<br><br>
             <b>2. 🏫 Jouw Klas:</b> Doe opdrachten in de 'Klas' tab om supersnel rijk te worden.<br><br>
-            <b>3. 🏝️ Tycoon Eiland:</b> Gebruik je munten om je eigen droom eiland te bouwen en show het aan je vrienden!
+            <b>3. 🏝️ Tycoon Eiland:</b> Gebruik je munten om je eigen droom eiland te bouwen!
             </p>
             <br>
         </div>
@@ -279,7 +285,7 @@ if not st.session_state.db['has_done_tour'].get(mijn_naam, False):
 
 # --- TERMINAL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V1.03</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V1.05</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown": st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
     elif cmd.startswith("/openaccount"):
@@ -649,7 +655,6 @@ elif nav == "Eiland Tycoon":
             if "Sneeuw" in huidig_weer: bg_kleur = "rgba(255,255,255,0.4)"
             elif "Regen" in huidig_weer: bg_kleur = "rgba(0,0,100,0.4)"
             
-            # CSS wrapper voor iPad / Mobiel (scrollbaar maken)
             map_html = f"<div class='game-map-wrapper'><div class='game-map' style='font-size: {fs}px; background: {bg_kleur};'>"
             for r in range(mijn_grid_size):
                 row_str = ""
@@ -700,7 +705,7 @@ elif nav == "Eiland Tycoon":
                 sla_db_op(); st.balloons(); st.success(f"🎉 Wauw! Je hebt een {gewonnen} ({SHOP_ITEMS[gewonnen]['emoji']}) gekregen!")
             else: st.error("Te weinig munten!")
         st.divider()
-        
+
         cols = st.columns(4)
         for i, (item, data) in enumerate(SHOP_ITEMS.items()):
             with cols[i % 4]:
@@ -742,7 +747,6 @@ elif nav == "Eiland Tycoon":
             _, col_visitor, _ = st.columns([1, 2, 1])
             with col_visitor:
                 fs_t = max(14, int(160 / t_size))
-                # IPAD BEZOEKERS MAP FIX
                 map_html = f"<div class='game-map-wrapper'><div class='game-map' style='font-size: {fs_t}px;'>"
                 for r in range(t_size):
                     row_str = ""
