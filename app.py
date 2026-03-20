@@ -14,7 +14,7 @@ except ImportError:
     st.error("Let op: 'groq' en 'pandas' ontbreken in requirements.txt")
 
 # --- 1. CONFIGURATIE ---
-SITE_TITLE = "Putsie WORLD 🎓 v1.02"
+SITE_TITLE = "Putsie WORLD 🎓 v1.03"
 MODEL_NAAM = "llama-3.1-8b-instant"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "database.json")
@@ -127,19 +127,34 @@ random.seed(vandaag)
 huidig_weer = random.choice(WEER_TYPES)
 random.seed() 
 
-# --- 3. BULLETPROOF DATABASE ENGINE ---
+# --- 3. ONVERWOESTBARE DATABASE ENGINE (IRONCLAD UPDATE) ---
 def laad_db():
     basis_db = {"users": {"elliot": {"pw": hash_pw("Putsie"), "role": "admin", "class": "ADMIN-000"}}}
     if os.path.exists(DB_FILE):
+        if os.path.getsize(DB_FILE) == 0:
+            return basis_db # Fix voor leeg bestand probleem
         try:
-            with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-        except Exception: return basis_db
+            with open(DB_FILE, "r", encoding="utf-8") as f: 
+                return json.load(f)
+        except Exception as e:
+            # RAMPEN PROTOCOL: Als het bestand stuk is, hernoem het in plaats van wissen!
+            backup_naam = DB_FILE + f".corrupt_{int(datetime.now().timestamp())}"
+            try:
+                os.rename(DB_FILE, backup_naam)
+            except: pass
+            return basis_db
     return basis_db
 
 def sla_db_op():
+    # ATOMIC SAVES: Schrijf naar een tijdelijk bestand en vervang het in één milliseconde.
+    # Hierdoor kan de database nooit meer half-opgeslagen of leeg raken als de server crasht.
+    temp_file = DB_FILE + ".tmp"
     try:
-        with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(st.session_state.db, f, separators=(',', ':'))
-    except Exception as e: st.error(f"🚨 Fout bij opslaan: {e}")
+        with open(temp_file, "w", encoding="utf-8") as f: 
+            json.dump(st.session_state.db, f, separators=(',', ':'))
+        os.replace(temp_file, DB_FILE)
+    except Exception as e: 
+        st.error(f"🚨 Fout bij veilig opslaan: {e}")
 
 if 'db' not in st.session_state: st.session_state.db = laad_db()
 
@@ -247,7 +262,7 @@ if not st.session_state.db['has_done_tour'].get(mijn_naam, False):
         st.markdown(f"""
         <div class='tour-box'>
             <h1 style='color: #00d2ff;'>🤖 Hoi {mijn_naam.capitalize()}! Ik ben Putsie!</h1>
-            <h3>Welkom in versie 1.0! Jouw nieuwe, betere wereld! Hier zijn 3 snelle tips:</h3>
+            <h3>Welkom in versie 1.03! Jouw nieuwe, betere wereld! Hier zijn 3 snelle tips:</h3>
             <p style='font-size: 18px; text-align: left;'>
             <b>1. 💰 De Bank:</b> Zet je munten op de bank om elke dag 5% rente te krijgen!<br><br>
             <b>2. 🏫 Jouw Klas:</b> Doe opdrachten in de 'Klas' tab om supersnel rijk te worden.<br><br>
@@ -264,7 +279,7 @@ if not st.session_state.db['has_done_tour'].get(mijn_naam, False):
 
 # --- TERMINAL ---
 if st.session_state.get('in_terminal', False):
-    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V1.02</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='hacker-term'><h1>>_ SYSTEM OVERRIDE V1.03</h1><p>Type /exit to leave.</p></div>", unsafe_allow_html=True)
     cmd = st.text_input(">").strip()
     if cmd == "/deactivatelockdown": st.session_state.db['lockdown'] = False; sla_db_op(); st.toast("🔓 Lockdown gedeactiveerd!")
     elif cmd.startswith("/openaccount"):
@@ -327,8 +342,7 @@ with st.sidebar:
     
     if hoofd_menu == "👤 Mijn Leven": nav = st.radio("Ga naar:", ["Profiel", "Putsie Bank", "Dierenwinkel"])
     elif hoofd_menu == "🏫 School & Leren": nav = st.radio("Ga naar:", ["Klas & Taken", "Frans Lab", "🤖 Putsie AI Hulp"])
-    elif hoofd_menu == "🎮 Games & Eiland":
-        nav = st.radio("Ga naar:", ["Eiland Tycoon", "Game Hal", "Raadsels"])
+    elif hoofd_menu == "🎮 Games & Eiland": nav = st.radio("Ga naar:", ["Eiland Tycoon", "Game Hal", "Raadsels"])
     elif hoofd_menu == "🛠️ Beheer":
         b_opties = []
         if is_teacher: b_opties.append("Leraar Paneel")
